@@ -1,0 +1,183 @@
+/* ═══════════════════════════════════════════════════════════════
+   PRIME LEDGER — Orokin void instrument panel
+   Chakra Petch (display/números) · IBM Plex Sans (cuerpo)
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* void */
+  --bg: #0a0c11;
+  --bg-raise: #10131b;
+  --bg-panel: #12161f;
+  --bg-inset: #0d1017;
+  --line: #232838;
+  --line-soft: #1a1f2c;
+
+  /* platinum text */
+  --text: #e6e2d6;
+  --text-dim: #9a9daa;
+  --text-faint: #62667a;
+
+  /* orokin gold */
+  --gold: #c9a961;
+  --gold-bright: #e8cd85;
+  --gold-dim: rgba(201, 169, 97, 0.14);
+
+  /* void energy */
+  --teal: #58c7c0;
+  --teal-dim: rgba(88, 199, 192, 0.12);
+
+  /* status */
+  --blue: #7da2e0;
+  --red: #c46a5a;
+  --red-dim: rgba(196, 106, 90, 0.12);
+
+  /* rarity */
+  --rare: #e8cd85;
+  --uncommon: #b9c4d4;
+  --common: #b08d57;
+
+  --font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
+  --radius: 4px;
+  --pad: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { color-scheme: dark; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  /* faint void texture */
+  background-image:
+    radial-gradient(ellipse 900px 500px at 70% -10%, rgba(201, 169, 97, 0.05), transparent),
+    radial-gradient(ellipse 700px 500px at 10% 110%, rgba(88, 199, 192, 0.04), transparent);
+  background-attachment: fixed;
+}
+
+::selection { background: var(--gold); color: #0a0c11; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  outline: none;
+}
+input:focus { border-color: var(--gold); }
+input[type='number'] { font-family: var(--font-display); }
+
+a { color: var(--teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── shared primitives ─────────────────────────────────────── */
+
+.panel {
+  position: relative;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Orokin corner ticks */
+.panel--ticked::before,
+.panel--ticked::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+.panel--ticked::before {
+  top: -1px; left: -1px;
+  border-top: 1px solid var(--gold);
+  border-left: 1px solid var(--gold);
+}
+.panel--ticked::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 1px solid var(--gold);
+  border-right: 1px solid var(--gold);
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+.bar {
+  height: 4px;
+  background: var(--line-soft);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bar--teal > i { background: var(--teal); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--gold); color: var(--text); }
+.chip.is-on {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+/* rarity + status dots */
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+.dot--rare { background: var(--rare); box-shadow: 0 0 6px rgba(232, 205, 133, 0.6); }
+.dot--uncommon { background: var(--uncommon); }
+.dot--common { background: var(--common); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
