@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { Extras, HistoryEvent, Progress } from '../types';
 import { EMPTY_PROGRESS } from '../types';
 import { MASTERY_GEAR } from './gameData';
+import type { AlecaImportResult } from './aleca';
 
 const LS_KEY = 'prime-tracker:v1';
 
@@ -14,6 +15,7 @@ type Action =
   | { type: 'setExtra'; key: keyof Extras; value: number }
   | { type: 'note'; label: string }
   | { type: 'importProgress'; progress: Progress }
+  | { type: 'importAleca'; result: AlecaImportResult }
   | { type: 'reset' };
 
 const ev = (kind: HistoryEvent['kind'], label: string, xp?: number): HistoryEvent => ({
@@ -69,6 +71,32 @@ function reducer(state: Progress, action: Action): Progress {
     }
     case 'note':
       return { ...state, history: [...state.history, ev('note', action.label)] };
+    case 'importAleca': {
+      const { patch, summary } = action.result;
+      // Conserva marcas manuales de maestría en ítems que el import no puede
+      // detectar (sin uniqueName/umbral, p. ej. Necramechs añadidos a mano).
+      const detectable = new Set(MASTERY_GEAR.filter((g) => g.un && g.aff).map((g) => g.name));
+      const mastered: Record<string, boolean> = { ...patch.mastered };
+      for (const [name, v] of Object.entries(state.mastered)) {
+        if (v && !detectable.has(name)) mastered[name] = true;
+      }
+      return {
+        ...state,
+        parts: patch.parts,
+        built: { ...state.built, ...patch.built },
+        mastered,
+        extras: patch.extras,
+        history: [
+          ...state.history,
+          ev(
+            'import',
+            `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
+              `${summary.itemsMastered} ítems masterizados` +
+              (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
+          ),
+        ],
+      };
+    }
     case 'importProgress':
       return {
         ...action.progress,

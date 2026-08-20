@@ -11,7 +11,7 @@ export const EXTRAS_XP: Record<keyof Extras, { per: number; max: number; label: 
   junctions: { per: 1000, max: 14, label: 'Junctions', hint: '1.000 XP c/u' },
   junctionsSP: { per: 1000, max: 14, label: 'Junctions (Steel Path)', hint: '1.000 XP c/u' },
   railjack: { per: 1500, max: 50, label: 'Intrínsecos Railjack', hint: '1.500 XP por rango (5 árboles × 10)' },
-  drifter: { per: 1500, max: 50, label: 'Intrínsecos Drifter', hint: '1.500 XP por rango (5 árboles × 10)' },
+  drifter: { per: 1500, max: 40, label: 'Intrínsecos Drifter', hint: '1.500 XP por rango (4 árboles × 10)' },
   starChart: { per: 1, max: 27519, label: 'Star Chart (XP)', hint: 'nodos mapa normal, máx ≈ 27.519' },
   starChartSP: { per: 1, max: 27519, label: 'Steel Path (XP)', hint: 'nodos SP, máx 27.519' },
 };

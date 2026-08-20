@@ -128,6 +128,7 @@ for (const item of gear) {
     components.push({
       name: comp.name,
       fullName: match,
+      un: comp.uniqueName,
       count: comp.itemCount ?? 1,
       ducats: comp.ducats,
       market: match.toLowerCase().replace(/ /g, '_').replace(/&/g, 'and'),
@@ -139,6 +140,7 @@ for (const item of gear) {
   }
   primes.push({
     name: item.name,
+    un: item.uniqueName,
     category: item.category,
     releaseDate: item.releaseDate,
     image: item.imageName,
@@ -158,19 +160,30 @@ for (const item of gear) {
   if (!item.masterable) continue;
   if (item.category === 'Misc') miscCats[item.type ?? 'unknown'] = (miscCats[item.type ?? 'unknown'] || 0) + 1;
   const cap = item.maxLevelCap ?? 30;
-  const perLevel = FRAME_LIKE.has(item.category) ? 200 : 100;
+  // Kitgun chambers rank like weapons despite living in Misc
+  const frameLike = FRAME_LIKE.has(item.category) && item.type !== 'Kitgun Component';
+  const perLevel = frameLike ? 200 : 100;
   masteryGear.push({
     name: item.name,
+    un: item.uniqueName,
     category: item.category,
     type: item.type,
     isPrime: item.isPrime || undefined,
     cap,
     xp: cap * perLevel,
+    // total affinity at rank cap — used to detect "mastered" from XPInfo
+    aff: cap * cap * (frameLike ? 1000 : 500),
     founders: FOUNDERS.has(item.name) || undefined,
   });
 }
 masteryGear.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 console.log('masterable Misc types:', JSON.stringify(miscCats));
+
+// ---------------------------------------------------------------- star chart nodes
+// Mission tags (SolNode…/SettlementNode…) — used to estimate star chart
+// mastery XP from an imported inventory's Missions list.
+const nodeItems = new Items({ category: ['Node'] });
+const starChartNodes = [...new Set(nodeItems.map((n) => n.uniqueName).filter(Boolean))];
 
 // ---------------------------------------------------------------- write
 const out = {
@@ -178,6 +191,7 @@ const out = {
   primes,
   relicSources: Object.fromEntries(relicSources),
   masteryGear,
+  starChartNodes,
 };
 writeFileSync(OUT, JSON.stringify(out));
 console.log(`OK ${primes.length} primes | ${relicSources.size} active relics | ${masteryGear.length} masterable items`);

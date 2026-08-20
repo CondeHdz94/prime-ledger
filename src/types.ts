@@ -13,6 +13,7 @@ export interface RelicRef {
 export interface PrimeComponent {
   name: string; // "Systems"
   fullName: string; // "Wisp Prime Systems Blueprint"
+  un?: string; // uniqueName, e.g. "/Lotus/Types/Recipes/WarframeRecipes/…"
   count: number;
   ducats?: number;
   market?: string; // warframe.market url slug
@@ -21,6 +22,7 @@ export interface PrimeComponent {
 
 export interface Prime {
   name: string;
+  un?: string;
   category: string;
   releaseDate?: string;
   image?: string;
@@ -40,11 +42,14 @@ export interface RelicSource {
 
 export interface MasteryItem {
   name: string;
+  un?: string;
   category: string;
   type?: string;
   isPrime?: true;
   cap: number;
   xp: number;
+  /** total affinity at rank cap — threshold to detect "mastered" from XPInfo */
+  aff?: number;
   founders?: true;
 }
 
@@ -53,6 +58,8 @@ export interface GameData {
   primes: Prime[];
   relicSources: Record<string, RelicSource[]>;
   masteryGear: MasteryItem[];
+  /** star chart mission tags (SolNode… / SettlementNode…) */
+  starChartNodes: string[];
 }
 
 // ---------- user progress (localStorage) ----------

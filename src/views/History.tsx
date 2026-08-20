@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useStore } from '../lib/store';
 import { fmt } from '../lib/mastery';
+import { parseLastData } from '../lib/aleca';
 import type { HistoryEvent } from '../types';
 
 const KIND_ICON: Record<HistoryEvent['kind'], string> = {
@@ -69,12 +70,42 @@ function Chart({ events }: { events: HistoryEvent[] }) {
 export function History() {
   const { progress, dispatch, exportJson, importJson } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const alecaRef = useRef<HTMLInputElement>(null);
   const days = useMemo(() => groupByDay(progress.history), [progress.history]);
 
   return (
     <div>
       <div className="hist-tools">
-        <button className="btn btn--gold" onClick={exportJson}>⇓ Exportar respaldo JSON</button>
+        <button className="btn btn--gold" onClick={() => alecaRef.current?.click()}>
+          ⇪ Importar AlecaFrame (lastData.dat)
+        </button>
+        <input
+          ref={alecaRef}
+          type="file"
+          accept=".dat"
+          style={{ display: 'none' }}
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            try {
+              const result = await parseLastData(f);
+              const s = result.summary;
+              const ok = confirm(
+                `Inventario leído (MR en juego: ${s.mrInGame ?? '?'}).\n` +
+                  `· ${s.partsFound} piezas prime sueltas\n` +
+                  `· ${s.primesBuilt} primes en tu arsenal\n` +
+                  `· ${s.itemsMastered} ítems masterizados\n` +
+                  `· ${s.starChartNodes} nodos star chart + ${s.steelPathNodes} Steel Path\n\n` +
+                  `¿Aplicar al tracker? (reemplaza piezas/maestría; el historial se conserva)`,
+              );
+              if (ok) dispatch({ type: 'importAleca', result });
+            } catch (err) {
+              alert(err instanceof Error ? err.message : 'No se pudo leer el archivo');
+            }
+            e.target.value = '';
+          }}
+        />
+        <button className="btn" onClick={exportJson}>⇓ Exportar respaldo JSON</button>
         <button className="btn" onClick={() => fileRef.current?.click()}>⇪ Importar respaldo</button>
         <input
           ref={fileRef}
