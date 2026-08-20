@@ -78,6 +78,7 @@ export function Dashboard({ onOpenPrime }: { onOpenPrime: (name: string) => void
               <span className="fr-relic">
                 <i className={`dot dot--${ft.relic.rarity.toLowerCase()}`} />
                 {ft.relic.relic}
+                {ft.owned > 0 && <em className="have">tienes {ft.owned}</em>}
               </span>
               <span className="fr-where">
                 {ft.source ? `${ft.source.where}${ft.source.rot ? ` · Rot ${ft.source.rot}` : ''}` : '—'}

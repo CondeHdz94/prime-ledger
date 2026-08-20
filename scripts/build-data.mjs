@@ -179,6 +179,17 @@ for (const item of gear) {
 masteryGear.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 console.log('masterable Misc types:', JSON.stringify(miscCats));
 
+// ---------------------------------------------------------------- relic index
+// uniqueName (sin prefijo) -> "Lith S1 Intact" — para leer el inventario de
+// reliquias importado de AlecaFrame (MiscItems /Lotus/Types/Game/Projections/…)
+const PROJ_PREFIX = '/Lotus/Types/Game/Projections/';
+const relicIndex = {};
+for (const r of relicItems) {
+  if (r.uniqueName?.startsWith(PROJ_PREFIX) && /(Intact|Exceptional|Flawless|Radiant)$/.test(r.name)) {
+    relicIndex[r.uniqueName.slice(PROJ_PREFIX.length)] = r.name;
+  }
+}
+
 // ---------------------------------------------------------------- star chart nodes
 // Mission tags (SolNode…/SettlementNode…) — used to estimate star chart
 // mastery XP from an imported inventory's Missions list.
@@ -192,6 +203,7 @@ const out = {
   relicSources: Object.fromEntries(relicSources),
   masteryGear,
   starChartNodes,
+  relicIndex,
 };
 writeFileSync(OUT, JSON.stringify(out));
 console.log(`OK ${primes.length} primes | ${relicSources.size} active relics | ${masteryGear.length} masterable items`);

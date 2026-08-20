@@ -27,15 +27,25 @@ export function primeStatus(p: Prime, progress: Progress): PrimeStatus {
   return 'missing';
 }
 
+/** Total de copias de una reliquia en tu inventario (todas las refinaciones). */
+export function relicOwned(progress: Progress, relicKey: string): number {
+  const states = progress.relics[relicKey];
+  if (!states) return 0;
+  return Object.values(states).reduce((n, v) => n + (v ?? 0), 0);
+}
+
 export interface FarmTarget {
   prime: Prime;
   component: PrimeComponent;
   missing: number;
   relic: RelicRef;
+  /** copias de esa reliquia que ya tienes */
+  owned: number;
   source?: RelicSource;
 }
 
-/** Missing parts that can be farmed right now, best odds first. */
+/** Missing parts that can be farmed right now, best odds first.
+ *  Las piezas cuya reliquia ya tienes en inventario van primero. */
 export function farmTargets(progress: Progress): FarmTarget[] {
   const out: FarmTarget[] = [];
   for (const p of PRIMES) {
@@ -43,12 +53,21 @@ export function farmTargets(progress: Progress): FarmTarget[] {
     for (const c of p.components) {
       const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
       if (missing <= 0) continue;
-      const relic = c.relics.find((r) => r.active);
+      // preferir una reliquia activa; si no hay, una que ya tengas en inventario
+      const relic = c.relics.find((r) => r.active) ?? c.relics.find((r) => relicOwned(progress, r.relic) > 0);
       if (!relic) continue;
-      out.push({ prime: p, component: c, missing, relic, source: relicSources(relic.relic)[0] });
+      out.push({
+        prime: p, component: c, missing, relic,
+        owned: relicOwned(progress, relic.relic),
+        source: relicSources(relic.relic)[0],
+      });
     }
   }
-  out.sort((a, b) => (b.relic.chances.Radiant ?? 0) - (a.relic.chances.Radiant ?? 0));
+  out.sort(
+    (a, b) =>
+      Number(b.owned > 0) - Number(a.owned > 0) ||
+      (b.relic.chances.Radiant ?? 0) - (a.relic.chances.Radiant ?? 0),
+  );
   return out;
 }
 

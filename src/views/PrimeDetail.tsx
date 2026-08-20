@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Prime } from '../types';
 import { CDN_IMG, CATEGORY_LABEL, marketUrl, relicSources } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { primeStatus, STATUS_LABEL } from '../lib/selectors';
+import { primeStatus, relicOwned, STATUS_LABEL } from '../lib/selectors';
 
 export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => void }) {
   const { progress, dispatch } = useStore();
@@ -80,11 +80,17 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
               </div>
               {c.relics.map((r) => {
                 const src = relicSources(r.relic)[0];
+                const owned = relicOwned(progress, r.relic);
+                const states = progress.relics[r.relic];
                 return (
                   <div key={r.relic} className="relic-row">
-                    <span className={`rr-name ${r.active ? '' : 'inactive'}`}>
+                    <span
+                      className={`rr-name ${r.active ? '' : 'inactive'}`}
+                      title={states ? Object.entries(states).map(([s, n]) => `${s}: ${n}`).join(' · ') : undefined}
+                    >
                       <i className={`dot dot--${r.rarity.toLowerCase()}`} />
                       {r.relic}
+                      {owned > 0 && <em className="have">×{owned}</em>}
                     </span>
                     <span className="rr-src">
                       {r.active && src

@@ -119,6 +119,19 @@
   color: var(--text-dim);
   white-space: nowrap;
 }
+
+/* "ya tienes N" — inventario de reliquias importado */
+.have {
+  font-style: normal;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--teal);
+  background: var(--teal-dim);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
 .farm-row .fr-where { font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .farm-row .fr-chance {
   font-family: var(--font-display);

@@ -95,6 +95,7 @@ export function History() {
                   `· ${s.partsFound} piezas prime sueltas\n` +
                   `· ${s.primesBuilt} primes en tu arsenal\n` +
                   `· ${s.itemsMastered} ítems masterizados\n` +
+                  `· ${s.relicCount} reliquias en inventario\n` +
                   `· ${s.starChartNodes} nodos star chart + ${s.steelPathNodes} Steel Path\n\n` +
                   `¿Aplicar al tracker? (reemplaza piezas/maestría; el historial se conserva)`,
               );

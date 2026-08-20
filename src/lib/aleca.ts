@@ -6,7 +6,7 @@
  * clave estática pública (documentada en Sainan/alecaframe-inventory-parser).
  * Todo ocurre en el navegador: nada sale de tu máquina.
  */
-import type { Extras, Progress } from '../types';
+import type { Extras, Progress, Refinement } from '../types';
 import { DATA, MASTERY_GEAR, PRIMES } from './gameData';
 import { EXTRAS_XP } from './mastery';
 
@@ -28,12 +28,13 @@ interface DeInventory {
 }
 
 export interface AlecaImportResult {
-  patch: Pick<Progress, 'parts' | 'built' | 'mastered'> & { extras: Extras };
+  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics'> & { extras: Extras };
   summary: {
     mrInGame?: number;
     partsFound: number;
     primesBuilt: number;
     itemsMastered: number;
+    relicCount: number;
     starChartNodes: number;
     steelPathNodes: number;
   };
@@ -118,6 +119,22 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
     }
   }
 
+  // Inventario de reliquias -------------------------------------------------
+  const PROJ_PREFIX = '/Lotus/Types/Game/Projections/';
+  const relics: Progress['relics'] = {};
+  let relicCount = 0;
+  for (const it of inv.MiscItems ?? []) {
+    if (!it.ItemType.startsWith(PROJ_PREFIX)) continue;
+    const display = DATA.relicIndex[it.ItemType.slice(PROJ_PREFIX.length)];
+    if (!display) continue; // requiem u otros sin mapeo de estado
+    const m = /^(.+) (Intact|Exceptional|Flawless|Radiant)$/.exec(display);
+    if (!m) continue;
+    const [, relicKey, state] = m;
+    (relics[relicKey] ??= {})[state as Refinement] =
+      ((relics[relicKey]?.[state as Refinement]) ?? 0) + (it.ItemCount ?? 1);
+    relicCount += it.ItemCount ?? 1;
+  }
+
   // Star chart, junctions e intrínsecos -------------------------------------
   const nodeSet = new Set(DATA.starChartNodes);
   let normalNodes = 0;
@@ -153,12 +170,13 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   };
 
   return {
-    patch: { parts, built, mastered, extras },
+    patch: { parts, built, mastered, relics, extras },
     summary: {
       mrInGame: inv.PlayerLevel,
       partsFound,
       primesBuilt,
       itemsMastered,
+      relicCount,
       starChartNodes: normalNodes,
       steelPathNodes: spNodes,
     },

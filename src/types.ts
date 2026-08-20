@@ -60,6 +60,8 @@ export interface GameData {
   masteryGear: MasteryItem[];
   /** star chart mission tags (SolNode… / SettlementNode…) */
   starChartNodes: string[];
+  /** relic uniqueName (sin prefijo /Lotus/Types/Game/Projections/) -> "Lith S1 Intact" */
+  relicIndex: Record<string, string>;
 }
 
 // ---------- user progress (localStorage) ----------
@@ -90,6 +92,8 @@ export interface Progress {
   built: Record<string, boolean>;
   /** item name -> mastered (rank cap reached). Single source for primes + all gear */
   mastered: Record<string, boolean>;
+  /** relic inventory: "Lith S1" -> counts per refinement (from AlecaFrame import) */
+  relics: Record<string, Partial<Record<Refinement, number>>>;
   extras: Extras;
   history: HistoryEvent[];
 }
@@ -99,6 +103,7 @@ export const EMPTY_PROGRESS: Progress = {
   parts: {},
   built: {},
   mastered: {},
+  relics: {},
   extras: { junctions: 0, junctionsSP: 0, railjack: 0, drifter: 0, starChart: 0, starChartSP: 0 },
   history: [],
 };

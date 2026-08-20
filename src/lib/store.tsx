@@ -85,13 +85,14 @@ function reducer(state: Progress, action: Action): Progress {
         parts: patch.parts,
         built: { ...state.built, ...patch.built },
         mastered,
+        relics: patch.relics,
         extras: patch.extras,
         history: [
           ...state.history,
           ev(
             'import',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
-              `${summary.itemsMastered} ítems masterizados` +
+              `${summary.itemsMastered} ítems masterizados, ${summary.relicCount} reliquias` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
           ),
         ],
