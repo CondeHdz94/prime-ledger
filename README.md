@@ -1,5 +1,8 @@
 # Prime Ledger
 
+**App en vivo:** https://condehdz94.github.io/prime-ledger/ — se redespliega
+sola cada lunes con el catálogo y las tablas de drop al día (y en cada push).
+
 Tracker personal de Warframe con dos metas:
 
 1. **Completar todo lo Prime** — checklist por pieza, con reliquias, dónde
@@ -28,6 +31,18 @@ de drop vigente: misiones del star chart / Railjack, bounties (Cetus, Fortuna,
 Deimos, Zariman, Sanctum, Höllvania) u objetivos transitorios. Si ninguna
 reliquia de un prime está activa, el prime se marca **Vault** (se consigue vía
 Varzia / trading — cada pieza tiene link directo a warframe.market).
+
+## Para usarlo (tú o cualquier Tenno)
+
+1. Abre https://condehdz94.github.io/prime-ledger/
+2. (Opcional, PC) Instala [AlecaFrame](https://alecaframe.com), juega un rato y
+   luego en la pestaña **Historial → Importar AlecaFrame** sube tu
+   `%localappdata%\AlecaFrame\lastData.dat` — marca todo tu inventario solo.
+   El descifrado ocurre en tu navegador; tu data nunca sale de tu máquina.
+3. Sin AlecaFrame también funciona: marca piezas y maestría a mano.
+
+El progreso de cada persona vive en el `localStorage` de su navegador — el
+sitio es el mismo para todos, pero cada quien ve su propio avance.
 
 ## Tu progreso
 
