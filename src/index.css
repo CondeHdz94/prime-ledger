@@ -1,46 +1,49 @@
 /* ═══════════════════════════════════════════════════════════════
-   PRIME LEDGER — Orokin void instrument panel
-   Chakra Petch (display/números) · IBM Plex Sans (cuerpo)
+   PRIME LEDGER — Orokin evolucionado
+   Space Grotesk (display · cifras · etiquetas) · IBM Plex Sans (cuerpo)
+   El oro y el void son la identidad; lo que cambia es la jerarquía.
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  /* void */
-  --bg: #0a0c11;
-  --bg-raise: #10131b;
-  --bg-panel: #12161f;
-  --bg-inset: #0d1017;
-  --line: #232838;
-  --line-soft: #1a1f2c;
+  /* void — grises cálidos, no azulados: el oro pelea con los fríos */
+  --void: #0a0a0d;
+  --surface: #101015;
+  --surface-2: #16161d;
+  --inset: #0c0c10;
+  --line: #262630;
+  --line-soft: #1c1c24;
 
-  /* platinum text */
-  --text: #e6e2d6;
-  --text-dim: #9a9daa;
-  --text-faint: #62667a;
-
-  /* orokin gold */
+  /* oro orokin */
   --gold: #c9a961;
-  --gold-bright: #e8cd85;
-  --gold-dim: rgba(201, 169, 97, 0.14);
+  --gold-bright: color-mix(in oklab, var(--gold) 62%, #fffaf0);
+  --glow: color-mix(in oklab, var(--gold) 13%, transparent);
+  --hair: color-mix(in oklab, var(--gold) 34%, transparent);
 
-  /* void energy */
-  --teal: #58c7c0;
-  --teal-dim: rgba(88, 199, 192, 0.12);
+  /* platino */
+  --text: #ece8dd;
+  --text-dim: #9c988e;
+  --text-faint: #6a675f;
 
-  /* status */
-  --blue: #7da2e0;
-  --red: #c46a5a;
-  --red-dim: rgba(196, 106, 90, 0.12);
+  /* semántica — cada color dice una sola cosa */
+  --teal: #58c7c0;            /* accionable ya */
+  --teal-glow: rgba(88, 199, 192, 0.11);
+  --blue: #8aa8e2;            /* listo, sin usar */
+  --blue-glow: rgba(138, 168, 226, 0.14);
+  --red: #c8705f;             /* vault · fuera de alcance */
+  --red-glow: rgba(200, 112, 95, 0.11);
 
-  /* rarity */
+  /* rareza de reliquia */
   --rare: #e8cd85;
   --uncommon: #b9c4d4;
   --common: #b08d57;
 
-  --font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
-  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --d: 'Space Grotesk', 'Segoe UI', sans-serif;
+  --b: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 
-  --radius: 4px;
-  --pad: 20px;
+  --r: 12px;
+  --r-s: 8px;
+  --pad: 22px;
+  --gap: 18px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,26 +51,27 @@
 html { color-scheme: dark; }
 
 body {
-  background: var(--bg);
+  background: var(--void);
   color: var(--text);
-  font-family: var(--font-body);
+  font-family: var(--b);
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
-  /* faint void texture */
   background-image:
-    radial-gradient(ellipse 900px 500px at 70% -10%, rgba(201, 169, 97, 0.05), transparent),
-    radial-gradient(ellipse 700px 500px at 10% 110%, rgba(88, 199, 192, 0.04), transparent);
+    radial-gradient(ellipse 1100px 620px at 76% -14%, color-mix(in oklab, var(--gold) 7%, transparent), transparent 70%),
+    radial-gradient(ellipse 800px 560px at 4% 108%, rgba(88, 199, 192, 0.05), transparent 70%);
   background-attachment: fixed;
 }
 
-::selection { background: var(--gold); color: #0a0c11; }
+::selection { background: var(--gold); color: var(--void); }
+
+*:focus-visible { outline: 2px solid var(--hair); outline-offset: 2px; }
 
 /* scrollbars */
 * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; }
 *::-webkit-scrollbar-track { background: transparent; }
 
 button {
@@ -76,108 +80,212 @@ button {
   background: none;
   border: none;
   cursor: pointer;
+  text-align: left;
 }
 
 input {
   font: inherit;
   color: var(--text);
-  background: var(--bg-inset);
+  background: var(--inset);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 6px 10px;
+  border-radius: var(--r-s);
+  padding: 9px 12px;
   outline: none;
 }
-input:focus { border-color: var(--gold); }
-input[type='number'] { font-family: var(--font-display); }
+input:focus { border-color: var(--hair); }
+input[type='number'] { font-family: var(--d); font-variant-numeric: tabular-nums; }
 
 a { color: var(--teal); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a:hover { color: var(--text); }
 
-/* ── shared primitives ─────────────────────────────────────── */
+svg { display: block; }
 
-.panel {
-  position: relative;
-  background: var(--bg-panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-}
+/* ── tipografía utilitaria ─────────────────────────────────── */
 
-/* Orokin corner ticks */
-.panel--ticked::before,
-.panel--ticked::after {
-  content: '';
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-}
-.panel--ticked::before {
-  top: -1px; left: -1px;
-  border-top: 1px solid var(--gold);
-  border-left: 1px solid var(--gold);
-}
-.panel--ticked::after {
-  bottom: -1px; right: -1px;
-  border-bottom: 1px solid var(--gold);
-  border-right: 1px solid var(--gold);
-}
-
-.label {
-  font-family: var(--font-display);
-  font-size: 10.5px;
+.k {
+  font-family: var(--d);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
 
-.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.n {
+  font-family: var(--d);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.dim { color: var(--text-dim); }
+.faint { color: var(--text-faint); }
+
+/* ── superficies ───────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+/* filete de oro incrustado: la firma Orokin, reservada a lo que importa */
+.card--inlay { border-top-color: transparent; }
+.card--inlay::before {
+  content: '';
+  position: absolute;
+  inset: -1px auto auto -1px;
+  width: calc(100% + 2px);
+  height: 1px;
+  border-radius: var(--r) var(--r) 0 0;
+  background: linear-gradient(90deg, transparent, var(--gold) 12%, var(--gold) 88%, transparent);
+  opacity: 0.65;
+}
+
+.card--tick::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 18px;
+  height: 18px;
+  border-right: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0 0 var(--r) 0;
+  pointer-events: none;
+}
+
+/* ── controles ─────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  font-family: var(--d);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--hair); color: var(--text); background: var(--surface-2); }
+.btn--gold { background: var(--glow); border-color: var(--hair); color: var(--gold-bright); }
+.btn--gold:hover { background: color-mix(in oklab, var(--gold) 22%, transparent); }
+.btn--danger:hover { border-color: var(--red); color: var(--red); background: var(--red-glow); }
+.btn--sm { padding: 6px 12px; min-height: 30px; font-size: 11.5px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-family: var(--d);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--hair); color: var(--text); }
+.chip.is-on { background: var(--glow); border-color: var(--hair); color: var(--gold-bright); }
+
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+}
+.seg button {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-family: var(--d);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  transition: color 0.16s, background 0.16s;
+}
+.seg button:hover { color: var(--text); }
+.seg button.is-on {
+  background: var(--surface-2);
+  color: var(--gold-bright);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* ── indicadores ───────────────────────────────────────────── */
 
 .bar {
-  height: 4px;
+  height: 5px;
   background: var(--line-soft);
-  border-radius: 2px;
+  border-radius: 99px;
   overflow: hidden;
+  display: flex;
 }
 .bar > i {
   display: block;
   height: 100%;
   background: var(--gold);
-  border-radius: 2px;
-  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .bar--teal > i { background: var(--teal); }
 
-.chip {
+/* barra por estado: cinco segmentos, no un porcentaje anónimo */
+.segbar { display: flex; height: 8px; gap: 2px; border-radius: 99px; overflow: hidden; }
+.segbar > i { display: block; height: 100%; transition: flex-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-dim); }
+.legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+
+/* pips de piezas: se ve cuántas faltan, no un relleno continuo */
+.pips { display: flex; gap: 3px; }
+.pips i { height: 5px; border-radius: 2px; background: var(--line-soft); flex: 1; }
+.pips i.is-full { background: var(--gold); }
+
+.badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 99px;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-family: var(--d);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
-.chip:hover { border-color: var(--gold); color: var(--text); }
-.chip.is-on {
-  background: var(--gold-dim);
-  border-color: var(--gold);
-  color: var(--gold-bright);
-}
+.badge--mastered { background: var(--glow); color: var(--gold-bright); }
+.badge--built { background: var(--teal-glow); color: var(--teal); }
+.badge--ready { background: var(--blue-glow); color: var(--blue); }
+.badge--partial { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); }
+.badge--missing { color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--line); }
+.badge--vault { background: var(--red-glow); color: var(--red); }
+.badge--farm { background: var(--teal-glow); color: var(--teal); }
 
-/* rarity + status dots */
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
-.dot--rare { background: var(--rare); box-shadow: 0 0 6px rgba(232, 205, 133, 0.6); }
+.dot--rare { background: var(--rare); box-shadow: 0 0 7px rgba(232, 205, 133, 0.55); }
 .dot--uncommon { background: var(--uncommon); }
 .dot--common { background: var(--common); }
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
-.rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rise { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}

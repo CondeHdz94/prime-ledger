@@ -33,6 +33,8 @@ export interface AlecaImportResult {
     mrInGame?: number;
     partsFound: number;
     primesBuilt: number;
+    /** ítems masterizables que ya están en tu arsenal */
+    gearOwned: number;
     itemsMastered: number;
     relicCount: number;
     starChartNodes: number;
@@ -98,7 +100,10 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
     }
   }
 
-  // Primes construidos y equipo masterizado ---------------------------------
+  // Lo que tienes en el arsenal ---------------------------------------------
+  // `built` cubre TODO el equipo masterizable, no solo primes: un arma que ya
+  // tienes y no has subido a rango máximo es XP de maestría sin farmear nada,
+  // y ahí está el 77% del XP que hace falta para MR 30.
   const built: Record<string, boolean> = {};
   let primesBuilt = 0;
   for (const p of PRIMES) {
@@ -107,6 +112,10 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
       primesBuilt++;
     }
   }
+  for (const g of MASTERY_GEAR) {
+    if (g.un && ownedTypes.has(g.un)) built[g.name] = true;
+  }
+  const gearOwned = Object.keys(built).length;
 
   const mastered: Record<string, boolean> = {};
   let itemsMastered = 0;
@@ -175,6 +184,7 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
       mrInGame: inv.PlayerLevel,
       partsFound,
       primesBuilt,
+      gearOwned,
       itemsMastered,
       relicCount,
       starChartNodes: normalNodes,

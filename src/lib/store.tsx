@@ -12,16 +12,23 @@ type Action =
   | { type: 'setPart'; fullName: string; owned: number; max: number; primeName: string }
   | { type: 'setBuilt'; primeName: string; built: boolean }
   | { type: 'setMastered'; itemName: string; mastered: boolean }
+  | { type: 'toggleTarget'; primeName: string }
   | { type: 'setExtra'; key: keyof Extras; value: number }
   | { type: 'note'; label: string }
   | { type: 'importProgress'; progress: Progress }
   | { type: 'importAleca'; result: AlecaImportResult }
   | { type: 'reset' };
 
-const ev = (kind: HistoryEvent['kind'], label: string, xp?: number): HistoryEvent => ({
+const ev = (
+  kind: HistoryEvent['kind'],
+  label: string,
+  xp?: number,
+  item?: string,
+): HistoryEvent => ({
   t: new Date().toISOString(),
   kind,
   label,
+  ...(item !== undefined ? { item } : {}),
   ...(xp !== undefined ? { xp } : {}),
 });
 
@@ -59,9 +66,22 @@ function reducer(state: Progress, action: Action): Progress {
         history: [
           ...state.history,
           action.mastered
-            ? ev('mastered', `Masterizado: ${action.itemName}`, xp)
-            : ev('unmastered', `Desmarcado: ${action.itemName}`, xp !== undefined ? -xp : undefined),
+            ? ev('mastered', `Masterizado: ${action.itemName}`, xp, action.itemName)
+            : ev('unmastered', `Desmarcado: ${action.itemName}`, xp !== undefined ? -xp : undefined, action.itemName),
         ],
+      };
+    }
+    case 'toggleTarget': {
+      const on = !state.targets[action.primeName];
+      const targets = { ...state.targets };
+      if (on) targets[action.primeName] = true;
+      else delete targets[action.primeName];
+      return {
+        ...state,
+        targets,
+        // Empezar una cacería es un evento con fecha; quitarla es una
+        // corrección, así que no ensucia el registro.
+        history: on ? [...state.history, ev('target', `Buscando: ${action.primeName}`)] : state.history,
       };
     }
     case 'setExtra': {
@@ -90,7 +110,9 @@ function reducer(state: Progress, action: Action): Progress {
         history: [
           ...state.history,
           ev(
-            'import',
+            // 'sync' y no 'import': restaurar un respaldo JSON no refresca
+            // nada desde el juego, así que no cuenta como sincronización.
+            'sync',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
               `${summary.itemsMastered} ítems masterizados, ${summary.relicCount} reliquias` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
@@ -116,7 +138,15 @@ function load(): Progress {
     if (!raw) return EMPTY_PROGRESS;
     const parsed = JSON.parse(raw) as Progress;
     if (parsed.v !== 1) return EMPTY_PROGRESS;
-    return { ...EMPTY_PROGRESS, ...parsed, extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras } };
+    // `targets` y `relics` llegaron después: un guardado viejo (o un respaldo
+    // editado a mano) no los trae y los lectores asumen que son objetos.
+    return {
+      ...EMPTY_PROGRESS,
+      ...parsed,
+      relics: parsed.relics ?? {},
+      targets: parsed.targets ?? {},
+      extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
+    };
   } catch {
     return EMPTY_PROGRESS;
   }
@@ -156,7 +186,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (parsed.v !== 1 || typeof parsed.parts !== 'object') {
           throw new Error('Archivo no válido');
         }
-        dispatch({ type: 'importProgress', progress: { ...EMPTY_PROGRESS, ...parsed } });
+        dispatch({
+          type: 'importProgress',
+          progress: {
+            ...EMPTY_PROGRESS,
+            ...parsed,
+            relics: parsed.relics ?? {},
+            targets: parsed.targets ?? {},
+            extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
+          },
+        });
       },
     }),
     [progress],

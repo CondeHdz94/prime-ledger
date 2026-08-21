@@ -66,12 +66,23 @@ export interface GameData {
 
 // ---------- user progress (localStorage) ----------
 
-export type HistoryKind = 'part' | 'built' | 'mastered' | 'unmastered' | 'extra' | 'import' | 'note';
+export type HistoryKind =
+  | 'part'
+  | 'built'
+  | 'mastered'
+  | 'unmastered'
+  | 'extra'
+  | 'import'
+  | 'sync'
+  | 'note'
+  | 'target';
 
 export interface HistoryEvent {
   t: string; // ISO date
   kind: HistoryKind;
   label: string;
+  /** nombre del ítem al que se refiere, sin el prefijo del label */
+  item?: string;
   xp?: number; // mastery XP delta, when applicable
 }
 
@@ -94,6 +105,8 @@ export interface Progress {
   mastered: Record<string, boolean>;
   /** relic inventory: "Lith S1" -> counts per refinement (from AlecaFrame import) */
   relics: Record<string, Partial<Record<Refinement, number>>>;
+  /** prime name -> lo estás cazando ahora (sección 00 del panel) */
+  targets: Record<string, boolean>;
   extras: Extras;
   history: HistoryEvent[];
 }
@@ -104,6 +117,7 @@ export const EMPTY_PROGRESS: Progress = {
   built: {},
   mastered: {},
   relics: {},
+  targets: {},
   extras: { junctions: 0, junctionsSP: 0, railjack: 0, drifter: 0, starChart: 0, starChartSP: 0 },
   history: [],
 };

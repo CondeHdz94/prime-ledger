@@ -1,30 +1,35 @@
 import { useMemo, useRef } from 'react';
 import { useStore } from '../lib/store';
 import { fmt } from '../lib/mastery';
-import { parseLastData } from '../lib/aleca';
+import { dayKey } from '../lib/dates';
+import { SyncButton } from '../components/SyncButton';
+import { Icon } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import type { HistoryEvent } from '../types';
 
-const KIND_ICON: Record<HistoryEvent['kind'], string> = {
-  part: '◈',
-  built: '⚒',
-  mastered: '★',
-  unmastered: '☆',
-  extra: '∴',
-  import: '⇪',
-  note: '·',
+const KIND_ICON: Record<HistoryEvent['kind'], IconName> = {
+  part: 'relic',
+  built: 'hammer',
+  mastered: 'star',
+  unmastered: 'star',
+  extra: 'up',
+  import: 'up',
+  sync: 'sync',
+  note: 'note',
+  target: 'star',
 };
 
 function groupByDay(events: HistoryEvent[]) {
   const days = new Map<string, HistoryEvent[]>();
   for (const e of events) {
-    const day = e.t.slice(0, 10);
+    const day = dayKey(e.t);
     if (!days.has(day)) days.set(day, []);
     days.get(day)!.push(e);
   }
   return [...days.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 }
 
-/** Cumulative mastery-XP sparkline from history events that carry xp. */
+/** Mastery XP acumulada según los eventos que llevan delta de XP. */
 function Chart({ events }: { events: HistoryEvent[] }) {
   const pts = useMemo(() => {
     let acc = 0;
@@ -39,75 +44,61 @@ function Chart({ events }: { events: HistoryEvent[] }) {
 
   if (pts.length < 2) return null;
 
-  const W = 800, H = 150, PAD = 8;
-  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const W = 800;
+  const H = 132;
+  const PAD = 10;
+  const t0 = pts[0].t;
+  const t1 = pts[pts.length - 1].t;
   const vMax = Math.max(...pts.map((p) => p.v), 1);
   const vMin = Math.min(...pts.map((p) => p.v), 0);
   const x = (t: number) => PAD + ((t - t0) / Math.max(1, t1 - t0)) * (W - PAD * 2);
   const y = (v: number) => H - PAD - ((v - vMin) / Math.max(1, vMax - vMin)) * (H - PAD * 2);
   const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
 
   return (
-    <div className="panel panel--ticked hist-chart">
-      <div className="panel-head">
-        <span className="label">Mastery XP acumulada (según registro)</span>
-        <span className="label num" style={{ color: 'var(--gold)' }}>{fmt(pts[pts.length - 1].v)} XP</span>
+    <section className="card card--inlay spark">
+      <div className="sect-h" style={{ marginBottom: 10 }}>
+        <div>
+          <div className="sect-t">Mastery XP acumulada</div>
+          <div className="sect-s">según lo que has ido marcando en el registro</div>
+        </div>
+        <div className="sect-r">
+          <span className="n spark-v">{fmt(last.v)} XP</span>
+        </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="fillGold" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(201,169,97,0.35)" />
-            <stop offset="100%" stopColor="rgba(201,169,97,0)" />
+            <stop offset="0%" stopColor="var(--gold)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="var(--gold)" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={`${d} L${x(t1).toFixed(1)},${H - PAD} L${x(t0).toFixed(1)},${H - PAD} Z`} fill="url(#fillGold)" />
-        <path d={d} fill="none" stroke="var(--gold)" strokeWidth="1.5" />
+        <path d={d} fill="none" stroke="var(--gold)" strokeWidth="1.6" strokeLinejoin="round" />
+        <circle cx={x(last.t)} cy={y(last.v)} r="3.5" fill="var(--gold-bright)" />
       </svg>
-    </div>
+    </section>
   );
 }
 
 export function History() {
   const { progress, dispatch, exportJson, importJson } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
-  const alecaRef = useRef<HTMLInputElement>(null);
   const days = useMemo(() => groupByDay(progress.history), [progress.history]);
 
   return (
-    <div>
+    <div className="stack">
       <div className="hist-tools">
-        <button className="btn btn--gold" onClick={() => alecaRef.current?.click()}>
-          ⇪ Importar AlecaFrame (lastData.dat)
+        <SyncButton variant="full" />
+        <button className="btn" onClick={exportJson}>
+          <Icon name="down" size={14} />
+          Exportar respaldo
         </button>
-        <input
-          ref={alecaRef}
-          type="file"
-          accept=".dat"
-          style={{ display: 'none' }}
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            try {
-              const result = await parseLastData(f);
-              const s = result.summary;
-              const ok = confirm(
-                `Inventario leído (MR en juego: ${s.mrInGame ?? '?'}).\n` +
-                  `· ${s.partsFound} piezas prime sueltas\n` +
-                  `· ${s.primesBuilt} primes en tu arsenal\n` +
-                  `· ${s.itemsMastered} ítems masterizados\n` +
-                  `· ${s.relicCount} reliquias en inventario\n` +
-                  `· ${s.starChartNodes} nodos star chart + ${s.steelPathNodes} Steel Path\n\n` +
-                  `¿Aplicar al tracker? (reemplaza piezas/maestría; el historial se conserva)`,
-              );
-              if (ok) dispatch({ type: 'importAleca', result });
-            } catch (err) {
-              alert(err instanceof Error ? err.message : 'No se pudo leer el archivo');
-            }
-            e.target.value = '';
-          }}
-        />
-        <button className="btn" onClick={exportJson}>⇓ Exportar respaldo JSON</button>
-        <button className="btn" onClick={() => fileRef.current?.click()}>⇪ Importar respaldo</button>
+        <button className="btn" onClick={() => fileRef.current?.click()}>
+          <Icon name="up" size={14} />
+          Importar respaldo
+        </button>
         <input
           ref={fileRef}
           type="file"
@@ -131,7 +122,8 @@ export function History() {
             if (label) dispatch({ type: 'note', label });
           }}
         >
-          + Nota
+          <Icon name="note" size={14} />
+          Nota
         </button>
         <button
           className="btn btn--danger"
@@ -148,31 +140,43 @@ export function History() {
 
       <Chart events={progress.history} />
 
-      {days.length === 0 && (
-        <div className="panel empty">
+      {days.length === 0 ? (
+        <div className="card empty">
           Aún no hay eventos. Cada pieza, construcción o mastery que marques queda registrada aquí con fecha.
         </div>
-      )}
-
-      {days.map(([day, events]) => (
-        <div key={day} className="hist-day">
-          <span className="label">
-            {new Date(day + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </span>
-          {[...events].reverse().map((e, i) => (
-            <div key={`${e.t}-${i}`} className="hist-event">
-              <time>{e.t.slice(11, 16)}</time>
-              <span aria-hidden style={{ color: 'var(--gold)' }}>{KIND_ICON[e.kind]}</span>
-              <span>{e.label}</span>
-              {e.xp !== undefined && (
-                <span className={`he-xp ${e.xp < 0 ? 'neg' : ''}`}>
-                  {e.xp >= 0 ? '+' : ''}{fmt(e.xp)} XP
+      ) : (
+        <section className="card sect">
+          <div className="stack" style={{ gap: 22 }}>
+            {days.map(([day, events]) => (
+              <div key={day} className="day">
+                <span className="k">
+                  {new Date(day + 'T12:00:00').toLocaleDateString('es-CO', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
                 </span>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
+                {[...events].reverse().map((e, i) => (
+                  <div key={`${e.t}-${i}`} className="ev">
+                    <time className="n">{e.t.slice(11, 16)}</time>
+                    <span className="eico">
+                      <Icon name={KIND_ICON[e.kind]} size={13} width={1.6} />
+                    </span>
+                    <p>{e.label}</p>
+                    {e.xp !== undefined && (
+                      <span className={`exp n ${e.xp < 0 ? 'is-neg' : ''}`}>
+                        {e.xp >= 0 ? '+' : ''}
+                        {fmt(e.xp)} XP
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

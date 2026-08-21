@@ -1,5 +1,6 @@
-import type { Prime, PrimeComponent, Progress, RelicRef, RelicSource } from '../types';
-import { PRIMES, partsNeeded, relicSources } from './gameData';
+import type { MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
+import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
+import { dayKey, today } from './dates';
 
 export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
 
@@ -92,4 +93,352 @@ export function tally(progress: Progress, includeFounders = false): PrimeTally {
     t.partsTotal += partsNeeded(p);
   }
   return t;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   El panel en orden de esfuerzo: abrir lo que ya tienes, farmear lo
+   que falta, construir lo que ya se puede.
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Toda pieza que aún te falta, con el prime al que pertenece. */
+interface MissingPart {
+  prime: Prime;
+  component: PrimeComponent;
+  missing: number;
+}
+
+function missingParts(progress: Progress): MissingPart[] {
+  const out: MissingPart[] = [];
+  for (const p of PRIMES) {
+    if (p.founders || progress.mastered[p.name] || progress.built[p.name]) continue;
+    for (const c of p.components) {
+      const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
+      if (missing > 0) out.push({ prime: p, component: c, missing });
+    }
+  }
+  return out;
+}
+
+export interface RelicYield {
+  prime: Prime;
+  component: PrimeComponent;
+  ref: RelicRef;
+}
+
+export interface OpenableRelic {
+  relic: string;
+  /** copias por refinación, tal como vino del import */
+  states: Partial<Record<Refinement, number>>;
+  owned: number;
+  /** piezas pendientes que esta reliquia puede dar */
+  yields: RelicYield[];
+  /** mejor probabilidad radiante entre esas piezas */
+  bestChance: number;
+}
+
+/** Reliquias que YA tienes y contienen piezas que aún te faltan.
+ *  Es lo primero que deberías hacer: no requiere farmear nada. */
+export function openableRelics(progress: Progress): OpenableRelic[] {
+  const owned = new Map<string, number>();
+  for (const [relic, states] of Object.entries(progress.relics)) {
+    const n = Object.values(states).reduce((a, v) => a + (v ?? 0), 0);
+    if (n > 0) owned.set(relic, n);
+  }
+  if (owned.size === 0) return [];
+
+  const byRelic = new Map<string, RelicYield[]>();
+  for (const { prime, component } of missingParts(progress)) {
+    for (const ref of component.relics) {
+      if (!owned.has(ref.relic)) continue;
+      if (!byRelic.has(ref.relic)) byRelic.set(ref.relic, []);
+      byRelic.get(ref.relic)!.push({ prime, component, ref });
+    }
+  }
+
+  const out: OpenableRelic[] = [];
+  for (const [relic, yields] of byRelic) {
+    yields.sort((a, b) => (b.ref.chances.Radiant ?? 0) - (a.ref.chances.Radiant ?? 0));
+    out.push({
+      relic,
+      states: progress.relics[relic] ?? {},
+      owned: owned.get(relic) ?? 0,
+      yields,
+      bestChance: yields[0]?.ref.chances.Radiant ?? 0,
+    });
+  }
+  out.sort((a, b) => b.yields.length - a.yields.length || b.bestChance - a.bestChance || b.owned - a.owned);
+  return out;
+}
+
+export interface MissionRelic {
+  relic: string;
+  rarity: RelicRef['rarity'];
+  owned: number;
+  /** piezas pendientes que salen de esta reliquia */
+  parts: { primeName: string; label: string }[];
+}
+
+export interface FarmMission {
+  key: string;
+  /** nodos que sirven igual de bien: mismo pool de reliquias y misma rotación */
+  wheres: string[];
+  mode?: string;
+  rot?: string;
+  stage?: string;
+  /** probabilidad de que caiga UNA reliquia en esa rotación */
+  chance: number;
+  relics: MissionRelic[];
+  /** número de piezas pendientes distintas alcanzables desde aquí */
+  covers: number;
+}
+
+interface SourceBucket {
+  where: string;
+  mode?: string;
+  rot?: string;
+  stage?: string;
+  chance: number;
+  relics: MissionRelic[];
+  parts: Set<string>;
+}
+
+/** El mismo farmeo, agrupado por misión en vez de por pieza.
+ *  Una entrada dice "ve una vez y te sirven N reliquias", en lugar de
+ *  repetir el mismo destino una fila por cada pieza.
+ *
+ *  Además fusiona los nodos equivalentes: Io, Helene, Camenae y Paimon son
+ *  cuatro Defensa Rot A con el mismo pool de Meso, así que van en una sola
+ *  fila con los cuatro destinos — si no, la lista repite lo mismo cuatro veces. */
+export function farmByMission(progress: Progress): FarmMission[] {
+  const bySource = new Map<string, SourceBucket>();
+
+  for (const { prime, component } of missingParts(progress)) {
+    for (const ref of component.relics) {
+      if (!ref.active) continue;
+      for (const src of relicSources(ref.relic)) {
+        const key = `${src.where}|${src.mode ?? ''}|${src.rot ?? ''}|${src.stage ?? ''}`;
+        let b = bySource.get(key);
+        if (!b) {
+          b = {
+            where: src.where,
+            mode: src.mode,
+            rot: src.rot,
+            stage: src.stage,
+            chance: src.chance,
+            relics: [],
+            parts: new Set(),
+          };
+          bySource.set(key, b);
+        }
+        let mr = b.relics.find((r) => r.relic === ref.relic);
+        if (!mr) {
+          mr = { relic: ref.relic, rarity: ref.rarity, owned: relicOwned(progress, ref.relic), parts: [] };
+          b.relics.push(mr);
+        }
+        const label = `${prime.name} ${component.name}`;
+        if (!mr.parts.some((p) => p.label === label)) mr.parts.push({ primeName: prime.name, label });
+        b.parts.add(component.fullName);
+      }
+    }
+  }
+
+  // Fusión por pool idéntico: misma rotación, misma probabilidad, mismas reliquias.
+  const merged = new Map<string, FarmMission>();
+  for (const b of bySource.values()) {
+    const pool = b.relics
+      .map((r) => r.relic)
+      .sort()
+      .join(',');
+    const sig = `${b.mode ?? ''}|${b.rot ?? ''}|${b.stage ?? ''}|${b.chance}|${pool}`;
+    const existing = merged.get(sig);
+    if (existing) {
+      if (!existing.wheres.includes(b.where)) existing.wheres.push(b.where);
+      continue;
+    }
+    merged.set(sig, {
+      key: sig,
+      wheres: [b.where],
+      mode: b.mode,
+      rot: b.rot,
+      stage: b.stage,
+      chance: b.chance,
+      relics: b.relics,
+      covers: b.parts.size,
+    });
+  }
+
+  const out = [...merged.values()];
+  for (const m of out) {
+    m.relics.sort((a, b) => b.parts.length - a.parts.length || a.relic.localeCompare(b.relic));
+    m.wheres.sort((a, b) => a.localeCompare(b));
+  }
+  out.sort((a, b) => b.covers - a.covers || b.chance - a.chance || b.relics.length - a.relics.length);
+  return out;
+}
+
+export interface BuildTarget {
+  prime: Prime;
+  /** XP de maestría que suma al construirlo y subirlo a rango máximo */
+  xp: number;
+}
+
+/** Primes con todas las piezas en el inventario: mastery esperando en la foundry. */
+export function buildReady(progress: Progress): BuildTarget[] {
+  const out: BuildTarget[] = [];
+  for (const p of PRIMES) {
+    if (p.founders) continue;
+    if (primeStatus(p, progress) !== 'ready') continue;
+    out.push({ prime: p, xp: MASTERY_GEAR.find((g) => g.name === p.name)?.xp ?? 0 });
+  }
+  out.sort((a, b) => b.xp - a.xp || a.prime.name.localeCompare(b.prime.name));
+  return out;
+}
+
+/** Texto corto de una fuente de reliquia: "Io (Jupiter) · Defense · Rot A". */
+export function sourceLabel(src: RelicSource | undefined): string {
+  if (!src) return '—';
+  return [src.where, src.mode, src.rot ? `Rot ${src.rot}` : ''].filter(Boolean).join(' · ');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Sección 04 — sube de rango lo que ya tienes.
+
+   Masterizar TODOS los primes del juego da 672.000 XP; MR 30 pide
+   2.250.000. El 77% del XP vive en equipo no-prime, y lo más barato de
+   todo es el que ya está en tu arsenal sin subir: no hay que farmearlo,
+   solo jugarlo. El import de AlecaFrame ya sabe qué tienes.
+   ═══════════════════════════════════════════════════════════════ */
+
+/** Equipo en tu arsenal que aún no llega a rango máximo, lo más jugoso primero. */
+export function levelUpQueue(progress: Progress): MasteryItem[] {
+  return MASTERY_GEAR.filter(
+    (g) => progress.built[g.name] && !progress.mastered[g.name] && !g.founders,
+  ).sort((a, b) => b.xp - a.xp || a.name.localeCompare(b.name));
+}
+
+/**
+ * Cuándo fue la última sincronización con AlecaFrame, si la hubo.
+ *
+ * Casi todo el panel se deriva de ese archivo, así que sin este dato no hay
+ * forma de saber cuánto desconfiar de lo que muestra. Sale del registro; el
+ * `fallback` cubre los eventos guardados antes de que 'sync' fuera su propio
+ * tipo, cuando compartía 'import' con la restauración de respaldos.
+ */
+export function lastSync(progress: Progress): string | undefined {
+  for (let i = progress.history.length - 1; i >= 0; i--) {
+    const e = progress.history[i];
+    if (e.kind === 'sync') return e.t;
+    if (e.kind === 'import' && e.label.startsWith('Import AlecaFrame')) return e.t;
+  }
+  return undefined;
+}
+
+/**
+ * Lo que marcaste como masterizado HOY. Se deriva del registro, que ya lleva
+ * la fecha de cada evento: no hace falta guardar estado extra, sobrevive a
+ * recargar la página y se limpia solo al cambiar el día.
+ *
+ * Sirve para que la sección 04 conserve la fila tachada durante la jornada
+ * (por si le diste sin querer) y la suelte al día siguiente.
+ */
+export function masteredToday(progress: Progress, day = today()): Set<string> {
+  const out = new Set<string>();
+  for (const e of progress.history) {
+    if (!e.item || dayKey(e.t) !== day) continue;
+    if (e.kind === 'mastered') out.add(e.item);
+    else if (e.kind === 'unmastered') out.delete(e.item);
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Sección 00 — lo que estás buscando ahora.
+   Nadie caza 161 primes a la vez: marcas dos o tres y el panel te
+   arma la ruta completa solo para esos.
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface HuntStep {
+  component: PrimeComponent;
+  missing: number;
+  /** la mejor reliquia para esta pieza: primero una que ya tengas */
+  ref?: RelicRef;
+  /** copias en tu inventario de esa reliquia */
+  owned: number;
+  source?: RelicSource;
+  /** ninguna reliquia activa la da: está en el vault */
+  vaulted: boolean;
+}
+
+export interface Hunt {
+  prime: Prime;
+  status: PrimeStatus;
+  owned: number;
+  total: number;
+  xp: number;
+  /** solo las piezas que aún faltan */
+  steps: HuntStep[];
+  /** reliquias tuyas que ya cubren algo pendiente */
+  usableRelics: string[];
+  /** piezas pendientes sin ninguna reliquia activa: no se farmean, se cambian */
+  vaultedSteps: number;
+}
+
+/** Elige la reliquia a recomendar para una pieza: primero una que ya tengas
+ *  y siga activa, si no la activa con mejor probabilidad radiante. */
+function bestRef(component: PrimeComponent, progress: Progress): RelicRef | undefined {
+  const active = component.relics.filter((r) => r.active);
+  const mine = active
+    .filter((r) => relicOwned(progress, r.relic) > 0)
+    .sort((a, b) => (b.chances.Radiant ?? 0) - (a.chances.Radiant ?? 0));
+  if (mine.length > 0) return mine[0];
+  const best = [...active].sort((a, b) => (b.chances.Radiant ?? 0) - (a.chances.Radiant ?? 0));
+  return best[0];
+}
+
+export function huntList(progress: Progress): Hunt[] {
+  const out: Hunt[] = [];
+  for (const p of PRIMES) {
+    if (!progress.targets[p.name]) continue;
+    const status = primeStatus(p, progress);
+    const steps: HuntStep[] = [];
+    const usable = new Set<string>();
+
+    for (const c of p.components) {
+      const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
+      if (missing <= 0) continue;
+      const ref = bestRef(c, progress);
+      const owned = ref ? relicOwned(progress, ref.relic) : 0;
+      if (ref?.active && owned > 0) usable.add(ref.relic);
+      steps.push({
+        component: c,
+        missing,
+        ref,
+        owned,
+        source: ref ? relicSources(ref.relic)[0] : undefined,
+        vaulted: !ref,
+      });
+    }
+
+    out.push({
+      prime: p,
+      status,
+      owned: ownedParts(p, progress),
+      total: partsNeeded(p),
+      xp: MASTERY_GEAR.find((g) => g.name === p.name)?.xp ?? 0,
+      steps,
+      usableRelics: [...usable],
+      vaultedSteps: steps.filter((s) => s.vaulted).length,
+    });
+  }
+
+  // Lo accionable arriba: construir ya > cerca de terminar > sin empezar >
+  // masterizado (que solo sigue ahí porque no lo has quitado de la lista).
+  const rank: Record<PrimeStatus, number> = { ready: 0, built: 1, partial: 2, missing: 3, mastered: 4 };
+  out.sort(
+    (a, b) =>
+      rank[a.status] - rank[b.status] ||
+      b.owned / Math.max(1, b.total) - a.owned / Math.max(1, a.total) ||
+      a.prime.name.localeCompare(b.prime.name),
+  );
+  return out;
 }
