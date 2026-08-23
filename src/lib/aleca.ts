@@ -91,8 +91,16 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
       if (!c.un) continue;
       // El blueprint de una parte de warframe vive en Recipes con sufijo
       // "Blueprint"; la parte ya construida vive en MiscItems como "Component".
-      const variants = [c.un, c.un.replace(/Component$/, 'Blueprint'), c.un.replace(/Blueprint$/, 'Component')];
-      const owned = Math.min(c.count, variants.reduce((n, v) => n + (counts.get(v) ?? 0), 0));
+      // Set: si `un` no termina en Component/Blueprint los tres replace devuelven
+      // la misma cadena, y sumarlas contaba la misma pieza 2-3 veces.
+      const variants = new Set([
+        c.un,
+        c.un.replace(/Component$/, 'Blueprint'),
+        c.un.replace(/Blueprint$/, 'Component'),
+      ]);
+      let total = 0;
+      for (const v of variants) total += counts.get(v) ?? 0;
+      const owned = Math.min(c.count, total);
       if (owned > 0) {
         parts[c.fullName] = owned;
         partsFound += owned;

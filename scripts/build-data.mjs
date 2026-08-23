@@ -20,6 +20,19 @@ const FOUNDERS = new Set(['Excalibur Prime', 'Lato Prime', 'Skana Prime']);
 
 // ---------------------------------------------------------------- relics
 // Map 'Axi A17' -> { rewards: Map<itemName, { rarity, chances: {Intact,...} }> }
+// @wfcd/items etiqueta los 3 slots Common como 'Uncommon' (el campo rarity viene
+// mal upstream), pero la probabilidad sí es correcta: derivamos la rareza de ahí.
+// Tabla oficial por refinamiento — Flawless/Common y Radiant/Uncommon comparten
+// el 20%, por eso no sirve un umbral global sobre chance.
+const RARITY_BY_REFINEMENT = {
+  Intact: [[25.33, 'Common'], [11, 'Uncommon'], [2, 'Rare']],
+  Exceptional: [[23.33, 'Common'], [13, 'Uncommon'], [4, 'Rare']],
+  Flawless: [[20, 'Common'], [17, 'Uncommon'], [6, 'Rare']],
+  Radiant: [[16.67, 'Common'], [20, 'Uncommon'], [10, 'Rare']],
+};
+const rarityOf = (refinement, chance) =>
+  RARITY_BY_REFINEMENT[refinement]?.find(([c]) => Math.abs(c - chance) < 0.4)?.[1] ?? null;
+
 const relicItems = new Items({ category: ['Relics'] });
 const relicMap = new Map();
 for (const r of relicItems) {
@@ -32,6 +45,8 @@ for (const r of relicItems) {
     let rec = entry.rewards.get(rw.item.name);
     if (!rec) entry.rewards.set(rw.item.name, (rec = { rarity: rw.rarity, chances: {} }));
     rec.chances[m[3]] = rw.chance;
+    const derived = rarityOf(m[3], rw.chance);
+    if (derived) rec.rarity = derived;
   }
 }
 

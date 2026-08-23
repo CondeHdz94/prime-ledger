@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredToday, openableRelics, sourceLabel, tally } from '../lib/selectors';
+import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, openableRelics, sourceLabel, tally } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { MR30_XP, extrasXp, fmt, gearXp, mrFromXp, mrThreshold, remainingGearXp, totalXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
@@ -24,6 +24,13 @@ function stockLabel(states: Partial<Record<Refinement, number>>): string {
     .join(' · ');
 }
 
+/** Lo que queda de la gracia, en m:ss. Se redondea hacia arriba para que la
+ *  cuenta arranque en el minuto entero y nunca muestre 0:00 con la fila viva. */
+function countdown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
 export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) {
   const { progress, dispatch } = useStore();
   const [farmMode, setFarmMode] = useState<'mission' | 'part'>('mission');
@@ -36,12 +43,27 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const builds = useMemo(() => buildReady(progress), [progress]);
   const hunts = useMemo(() => huntList(progress), [progress]);
   const levelUp = useMemo(() => levelUpQueue(progress), [progress]);
-  // Lo que marcas hoy se queda a la vista y tachado, no se desvanece bajo el
+  // Lo que marcas se queda a la vista y tachado, no se desvanece bajo el
   // cursor: si le diste sin querer, un segundo clic lo revierte. Sale del
-  // registro, así que aguanta recargas y se limpia solo mañana.
-  const levelledToday = useMemo(() => masteredToday(progress), [progress]);
-  const markLevelled = (name: string, mastered: boolean) =>
+  // registro, así que aguanta recargas, y se retira solo pasada la gracia.
+  const [now, setNow] = useState(() => Date.now());
+  const levelledRecent = useMemo(() => masteredRecently(progress, now), [progress, now]);
+  // El reloj solo corre mientras haya algo tachado esperando salir: sin checks
+  // no hay nada que contar y un intervalo por segundo sería puro desperdicio.
+  const ticking = levelledRecent.size > 0;
+  useEffect(() => {
+    if (!ticking) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [ticking]);
+  const markLevelled = (name: string, mastered: boolean) => {
+    // Poner el reloj en hora aquí y no en un effect: mientras no hay nada
+    // tachado el intervalo está parado y `now` puede llevar horas congelado,
+    // así que la primera cuenta se pintaría desfasada.
+    // oxlint-disable-next-line react/purity -- esto es el handler, no el render
+    setNow(Date.now());
     dispatch({ type: 'setMastered', itemName: name, mastered });
+  };
 
   const xp = totalXp(progress);
   const mr = mrFromXp(xp);
@@ -63,7 +85,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const levelUpShown = useMemo(() => {
     const pool = new Map<string, MasteryItem>();
     for (const g of levelUp) pool.set(g.name, g);
-    for (const name of levelledToday) {
+    for (const name of levelledRecent.keys()) {
       // solo lo que tienes en el arsenal: es la premisa de la sección
       if (!progress.built[name] || pool.has(name)) continue;
       const g = MASTERY_GEAR.find((x) => x.name === name);
@@ -72,7 +94,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
     return [...pool.values()]
       .sort((a, b) => b.xp - a.xp || a.name.localeCompare(b.name))
       .slice(0, 12);
-  }, [levelUp, levelledToday, progress.built]);
+  }, [levelUp, levelledRecent, progress.built]);
 
   // pendientes que no caben en las 12 filas (las ya marcadas ocupan sitio)
   const morePending = levelUp.length - levelUpShown.filter((g) => !progress.mastered[g.name]).length;
@@ -594,6 +616,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             <div className="lgrid">
               {levelUpShown.map((g) => {
                 const done = !!progress.mastered[g.name];
+                const expiresAt = levelledRecent.get(g.name);
                 return (
                   <button
                     key={g.name}
@@ -612,9 +635,15 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                     <span className="lname">
                       <b>{g.name}</b>
                       <span>
-                        {done
-                          ? 'masterizado · clic para deshacer'
-                          : `${CATEGORY_LABEL[g.category] ?? g.category} · rango ${g.cap}`}
+                        {!done ? (
+                          `${CATEGORY_LABEL[g.category] ?? g.category} · rango ${g.cap}`
+                        ) : expiresAt === undefined ? (
+                          'masterizado · clic para deshacer'
+                        ) : (
+                          <>
+                            masterizado · sale en <i className="ltimer">{countdown(expiresAt - now)}</i>
+                          </>
+                        )}
                       </span>
                     </span>
                     <span className="lxp n">+{fmt(g.xp)}</span>

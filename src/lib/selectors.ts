@@ -1,6 +1,5 @@
 import type { MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
 import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
-import { dayKey, today } from './dates';
 
 export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
 
@@ -333,21 +332,30 @@ export function lastSync(progress: Progress): string | undefined {
   return undefined;
 }
 
+/** Cuánto se queda a la vista una fila recién marcada, antes de salir. */
+export const LEVELLED_GRACE_MS = 10 * 60 * 1000;
+
 /**
- * Lo que marcaste como masterizado HOY. Se deriva del registro, que ya lleva
- * la fecha de cada evento: no hace falta guardar estado extra, sobrevive a
- * recargar la página y se limpia solo al cambiar el día.
+ * Lo que marcaste como masterizado hace poco, con el instante en que cada uno
+ * deja de mostrarse. Se deriva del registro, que ya lleva la fecha de cada
+ * evento: no hace falta guardar estado extra y sobrevive a recargar la página.
  *
- * Sirve para que la sección 04 conserve la fila tachada durante la jornada
- * (por si le diste sin querer) y la suelte al día siguiente.
+ * La ventana es corta a propósito. Sirve para deshacer un clic accidental, no
+ * para llevar la cuenta del día: pasada la gracia la fila estorba, porque lo
+ * que importa de la sección 04 es lo que aún está pendiente.
  */
-export function masteredToday(progress: Progress, day = today()): Set<string> {
-  const out = new Set<string>();
+export function masteredRecently(
+  progress: Progress,
+  now = Date.now(),
+  graceMs = LEVELLED_GRACE_MS,
+): Map<string, number> {
+  const out = new Map<string, number>();
   for (const e of progress.history) {
-    if (!e.item || dayKey(e.t) !== day) continue;
-    if (e.kind === 'mastered') out.add(e.item);
+    if (!e.item) continue;
+    if (e.kind === 'mastered') out.set(e.item, new Date(e.t).getTime() + graceMs);
     else if (e.kind === 'unmastered') out.delete(e.item);
   }
+  for (const [name, expiresAt] of out) if (expiresAt <= now) out.delete(name);
   return out;
 }
 
