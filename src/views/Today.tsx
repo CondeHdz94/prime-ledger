@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, openableRelics, sourceLabel, tally } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
-import { extrasXp, fmt, gearXp, mrGoal, mrLabel, remainingGearXp, totalXp } from '../lib/mastery';
+import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { SyncButton } from '../components/SyncButton';
@@ -72,7 +72,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const collDone = t.mastered + t.built + t.ready;
   const openParts = openable.reduce((n, r) => n + r.yields.length, 0);
   const buildXp = builds.reduce((n, b) => n + b.xp, 0);
-  const levelUpXp = levelUp.reduce((n, g) => n + g.xp, 0);
+  const levelUpXp = levelUp.reduce((n, g) => n + pendingXp(g, progress), 0);
   /**
    * Las 12 filas de la sección. El truco está en armar UN pool con lo
    * pendiente más lo que marcaste hoy y recortar a 12 al final: así el ítem
@@ -615,6 +615,10 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
               {levelUpShown.map((g) => {
                 const done = !!progress.mastered[g.name];
                 const expiresAt = levelledRecent.get(g.name);
+                // El rango ya subido descuenta: lo que queda por sacar del
+                // ítem, no su total, es lo que decide si vale la pena.
+                const rank = progress.ranks[g.name] ?? 0;
+                const left = pendingXp(g, progress);
                 return (
                   <button
                     key={g.name}
@@ -623,7 +627,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                     title={
                       done
                         ? `Deshacer: ${g.name} volvería a contar como pendiente`
-                        : `Marcar ${g.name} como masterizado (${fmt(g.xp)} XP)`
+                        : `Marcar ${g.name} como masterizado (rango ${rank}/${g.cap}, faltan ${fmt(left)} XP)`
                     }
                     aria-pressed={done}
                   >
@@ -634,7 +638,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                       <b>{g.name}</b>
                       <span>
                         {!done ? (
-                          `${CATEGORY_LABEL[g.category] ?? g.category} · rango ${g.cap}`
+                          `${CATEGORY_LABEL[g.category] ?? g.category} · rango ${rank}/${g.cap}`
                         ) : expiresAt === undefined ? (
                           'masterizado · clic para deshacer'
                         ) : (
@@ -644,7 +648,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                         )}
                       </span>
                     </span>
-                    <span className="lxp n">+{fmt(g.xp)}</span>
+                    <span className="lxp n">+{fmt(done ? g.xp : left)}</span>
                   </button>
                 );
               })}

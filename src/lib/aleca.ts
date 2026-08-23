@@ -28,7 +28,7 @@ interface DeInventory {
 }
 
 export interface AlecaImportResult {
-  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics'> & { extras: Extras };
+  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics' | 'ranks'> & { extras: Extras };
   summary: {
     mrInGame?: number;
     partsFound: number;
@@ -36,6 +36,8 @@ export interface AlecaImportResult {
     /** ítems masterizables que ya están en tu arsenal */
     gearOwned: number;
     itemsMastered: number;
+    /** ítems a medio subir, que ya aportan XP sin estar al tope */
+    itemsPartial: number;
     relicCount: number;
     starChartNodes: number;
     steelPathNodes: number;
@@ -126,13 +128,26 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   const gearOwned = Object.keys(built).length;
 
   const mastered: Record<string, boolean> = {};
+  const ranks: Record<string, number> = {};
   let itemsMastered = 0;
+  let itemsPartial = 0;
   for (const g of MASTERY_GEAR) {
     if (!g.un || !g.aff) continue;
     const xp = xpByType.get(g.un);
-    if (xp !== undefined && xp >= g.aff) {
+    if (xp === undefined) continue;
+    if (xp >= g.aff) {
       mastered[g.name] = true;
       itemsMastered++;
+      continue;
+    }
+    // La afinidad para el rango n es k·n², y k sale del propio catálogo:
+    // aff es la del rango tope, o sea k·cap². Invertir eso da el rango actual
+    // sin duplicar aquí la tabla de 500/1000 por categoría.
+    const k = g.aff / (g.cap * g.cap);
+    const rank = Math.min(g.cap, Math.floor(Math.sqrt(xp / k)));
+    if (rank > 0) {
+      ranks[g.name] = rank;
+      itemsPartial++;
     }
   }
 
@@ -196,13 +211,14 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   };
 
   return {
-    patch: { parts, built, mastered, relics, extras },
+    patch: { parts, built, mastered, ranks, relics, extras },
     summary: {
       mrInGame: inv.PlayerLevel,
       partsFound,
       primesBuilt,
       gearOwned,
       itemsMastered,
+      itemsPartial,
       relicCount,
       starChartNodes: normalNodes,
       steelPathNodes: spNodes,

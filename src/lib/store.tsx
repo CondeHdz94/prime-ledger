@@ -105,6 +105,7 @@ function reducer(state: Progress, action: Action): Progress {
         parts: patch.parts,
         built: { ...state.built, ...patch.built },
         mastered,
+        ranks: patch.ranks,
         relics: patch.relics,
         extras: patch.extras,
         history: [
@@ -114,7 +115,8 @@ function reducer(state: Progress, action: Action): Progress {
             // nada desde el juego, así que no cuenta como sincronización.
             'sync',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
-              `${summary.itemsMastered} ítems masterizados, ${summary.relicCount} reliquias` +
+              `${summary.itemsMastered} ítems masterizados, ${summary.itemsPartial} a medio subir, ` +
+              `${summary.relicCount} reliquias` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
           ),
         ],
@@ -145,6 +147,7 @@ function load(): Progress {
       ...parsed,
       relics: parsed.relics ?? {},
       targets: parsed.targets ?? {},
+      ranks: parsed.ranks ?? {},
       extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
     };
   } catch {
@@ -193,6 +196,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...parsed,
             relics: parsed.relics ?? {},
             targets: parsed.targets ?? {},
+            ranks: parsed.ranks ?? {},
             extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
           },
         });

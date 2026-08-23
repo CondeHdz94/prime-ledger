@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CATEGORY_LABEL, MASTERY_GEAR } from '../lib/gameData';
 import { useStore } from '../lib/store';
 import { levelUpQueue } from '../lib/selectors';
-import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, remainingGearXp, totalXp } from '../lib/mastery';
+import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { CatIcon, Icon } from '../components/Icon';
 import type { Extras, MasteryItem } from '../types';
 
@@ -68,7 +68,7 @@ export function Mastery() {
   const remaining = remainingGearXp(progress);
   const masteredCount = MASTERY_GEAR.filter((g) => progress.mastered[g.name]).length;
   const ownedPending = useMemo(() => levelUpQueue(progress), [progress]);
-  const ownedPendingXp = ownedPending.reduce((n, g) => n + g.xp, 0);
+  const ownedPendingXp = ownedPending.reduce((n, g) => n + pendingXp(g, progress), 0);
   const gearPct = (masteredCount / MASTERY_GEAR.length) * 100;
   const reachable = toGoal <= remaining;
 
@@ -233,7 +233,7 @@ export function Mastery() {
                       onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
                       title={
                         owned
-                          ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(item.xp)} XP (rango ${item.cap})`
+                          ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
                           : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`
                       }
                       aria-pressed={on}

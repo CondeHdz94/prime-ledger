@@ -103,6 +103,12 @@ export interface Progress {
   built: Record<string, boolean>;
   /** item name -> mastered (rank cap reached). Single source for primes + all gear */
   mastered: Record<string, boolean>;
+  /**
+   * item name -> rango actual (1..cap) de lo que aún no llega al tope.
+   * El XP de maestría se gana por rango, no al llegar al cap: un arma en 15/30
+   * ya dio la mitad. Sale del XPInfo del import; lo masterizado no entra aquí.
+   */
+  ranks: Record<string, number>;
   /** relic inventory: "Lith S1" -> counts per refinement (from AlecaFrame import) */
   relics: Record<string, Partial<Record<Refinement, number>>>;
   /** prime name -> lo estás cazando ahora (sección 00 del panel) */
@@ -116,6 +122,7 @@ export const EMPTY_PROGRESS: Progress = {
   parts: {},
   built: {},
   mastered: {},
+  ranks: {},
   relics: {},
   targets: {},
   extras: { junctions: 0, junctionsSP: 0, railjack: 0, drifter: 0, starChart: 0, starChartSP: 0 },

@@ -1,4 +1,4 @@
-import type { Extras, Progress } from '../types';
+import type { Extras, MasteryItem, Progress } from '../types';
 import { MASTERY_GEAR } from './gameData';
 
 /** XP needed to *reach* MR `rank` (0–30). Legendary: 2.25M + 147.5K per LR. */
@@ -23,9 +23,24 @@ export function extrasXp(extras: Extras): number {
   );
 }
 
+/**
+ * XP de maestría ya ganado de un ítem: completo si está masterizado, y si no,
+ * la parte proporcional al rango alcanzado — el juego paga por rango subido,
+ * así que un arma a medio subir ya cuenta.
+ */
+export function earnedXp(item: MasteryItem, progress: Progress): number {
+  if (progress.mastered[item.name]) return item.xp;
+  const rank = Math.min(progress.ranks[item.name] ?? 0, item.cap);
+  return rank > 0 ? Math.round((item.xp * rank) / item.cap) : 0;
+}
+
+/** Lo que todavía puede dar un ítem: su total menos lo ya ganado. */
+export const pendingXp = (item: MasteryItem, progress: Progress) =>
+  item.xp - earnedXp(item, progress);
+
 export function gearXp(progress: Progress): number {
   let sum = 0;
-  for (const item of MASTERY_GEAR) if (progress.mastered[item.name]) sum += item.xp;
+  for (const item of MASTERY_GEAR) sum += earnedXp(item, progress);
   return sum;
 }
 
@@ -90,7 +105,7 @@ export function mrGoal(xp: number): MrGoal {
 export function remainingGearXp(progress: Progress): number {
   let sum = 0;
   for (const item of MASTERY_GEAR) {
-    if (!progress.mastered[item.name] && !item.founders) sum += item.xp;
+    if (!progress.mastered[item.name] && !item.founders) sum += pendingXp(item, progress);
   }
   return sum;
 }
