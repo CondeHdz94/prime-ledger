@@ -153,7 +153,14 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   }
 
   // Star chart, junctions e intrínsecos -------------------------------------
-  const nodeSet = new Set(DATA.starChartNodes);
+  // Un nodo hecho en Steel Path aparece una sola vez, con Tier 1 — pero el
+  // Steel Path exige el star chart completo, así que hacerlo en SP implica
+  // haberlo hecho en normal. Contarlos como excluyentes descontaba justo los
+  // nodos de quien más ha jugado.
+  //
+  // Tampoco se exige que el tag esté en el catálogo: @wfcd/items sólo trae 269
+  // nodos y de ahí 26 son ClanNode (dojo, no star chart), así que faltan
+  // decenas de SolNode reales. El prefijo del tag es un filtro más fiable.
   let normalNodes = 0;
   let spNodes = 0;
   let junctions = 0;
@@ -161,14 +168,16 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   for (const m of inv.Missions ?? []) {
     const sp = m.Tier === 1;
     if (/Junction$/.test(m.Tag)) {
+      junctions++;
       if (sp) junctionsSP++;
-      else junctions++;
-    } else if (nodeSet.has(m.Tag)) {
+    } else if (/^(SolNode|SettlementNode)/.test(m.Tag)) {
+      normalNodes++;
       if (sp) spNodes++;
-      else normalNodes++;
     }
   }
-  const totalNodes = Math.max(1, DATA.starChartNodes.length);
+  // El catálogo se queda corto, así que el denominador nunca puede ser menor
+  // que lo que el jugador ya tiene hecho: si no, el porcentaje pasaría de 100.
+  const totalNodes = Math.max(1, DATA.starChartNodes.length, normalNodes);
 
   const skills = inv.PlayerSkills ?? {};
   const sum = (prefix: string, exclude?: string) =>
