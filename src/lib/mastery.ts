@@ -41,6 +41,51 @@ export function mrFromXp(xp: number): number {
   return rank;
 }
 
+/** Etiqueta del rango tal como la nombra el juego: MR 31 es "Legendary 1". */
+export const mrLabel = (rank: number) => (rank > 30 ? `Legendary ${rank - 30}` : `MR ${rank}`);
+
+/** El objetivo que persigue el panel y cuánto falta para él. */
+export interface MrGoal {
+  mr: number;
+  /** rango legendario alcanzado (1, 2, 3…), sólo por encima de MR 30 */
+  legendary?: number;
+  /** rango que persigue la barra */
+  goal: number;
+  goalXp: number;
+  /** XP que falta para `goal` */
+  toGoal: number;
+  /** 0–100 hacia `goal` */
+  pct: number;
+  /** true mientras MR 30 siga siendo la meta */
+  chasingMr30: boolean;
+}
+
+/**
+ * Hasta MR 30 la meta es MR 30: es el techo que le importa a casi todo el
+ * mundo, y la barra mide el camino entero desde cero. Pasado ese punto la meta
+ * pasa a ser el siguiente rango legendario y la barra mide sólo el tramo del
+ * rango actual — si no, se queda clavada en 100 % y deja de decir nada.
+ */
+export function mrGoal(xp: number): MrGoal {
+  const mr = mrFromXp(xp);
+  const chasingMr30 = mr < 30;
+  const goal = chasingMr30 ? 30 : mr + 1;
+  const goalXp = mrThreshold(goal);
+  const from = chasingMr30 ? 0 : mrThreshold(mr);
+  const span = Math.max(1, goalXp - from);
+  return {
+    mr,
+    legendary: mr > 30 ? mr - 30 : undefined,
+    goal,
+    goalXp,
+    toGoal: Math.max(0, goalXp - xp),
+    // Truncado y no redondeado: con 2.249.999 XP (MR 29, falta 1) un
+    // toFixed(1) mostraba "100.0 %" y daba la meta por cumplida.
+    pct: Math.min(100, Math.floor(((xp - from) / span) * 1000) / 10),
+    chasingMr30,
+  };
+}
+
 /** XP still available from unmastered gear (excluding founders' items). */
 export function remainingGearXp(progress: Progress): number {
   let sum = 0;

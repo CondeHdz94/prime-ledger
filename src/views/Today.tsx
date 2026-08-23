@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
 import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, openableRelics, sourceLabel, tally } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
-import { MR30_XP, extrasXp, fmt, gearXp, mrFromXp, mrThreshold, remainingGearXp, totalXp } from '../lib/mastery';
+import { extrasXp, fmt, gearXp, mrGoal, mrLabel, remainingGearXp, totalXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { SyncButton } from '../components/SyncButton';
@@ -66,10 +66,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   };
 
   const xp = totalXp(progress);
-  const mr = mrFromXp(xp);
-  const next = mrThreshold(mr + 1);
-  const pct = Math.min(100, (xp / MR30_XP) * 100);
-  const toMr30 = Math.max(0, MR30_XP - xp);
+  const { mr, legendary, goal, goalXp, toGoal, pct, chasingMr30 } = mrGoal(xp);
   const remaining = remainingGearXp(progress);
 
   const collDone = t.mastered + t.built + t.ready;
@@ -142,15 +139,16 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
 
         <section className="card card--inlay card--tick goal goal--teal rise" style={{ animationDelay: '60ms' }}>
           <div className="goal-h">
-            <span className="k">Meta 02 · mastery rank 30</span>
+            <span className="k">Meta 02 · {chasingMr30 ? 'mastery rank 30' : mrLabel(goal).toLowerCase()}</span>
             <span className="pct n">{pct.toFixed(1)}%</span>
           </div>
           <div className="goal-v">
             <b className="n">MR {mr}</b>
             <em>
-              {fmt(xp)} / {fmt(MR30_XP)} XP
+              {fmt(xp)} / {fmt(goalXp)} XP
+              {legendary !== undefined && ` · legendary ${legendary}`}
               <br />
-              faltan {fmt(toMr30)} · {fmt(Math.max(0, next - xp))} para MR {mr + 1}
+              faltan {fmt(toGoal)} para {mrLabel(goal)}
             </em>
           </div>
           <div className="bar bar--teal">
@@ -158,13 +156,13 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
           </div>
           <div className="goal-note">
             <Icon
-              name={toMr30 <= remaining ? 'check' : 'alert'}
+              name={toGoal <= remaining ? 'check' : 'alert'}
               size={15}
-              color={toMr30 <= remaining ? 'var(--teal)' : 'var(--red)'}
+              color={toGoal <= remaining ? 'var(--teal)' : 'var(--red)'}
               width={1.7}
             />
             <span>
-              {toMr30 <= remaining ? (
+              {toGoal <= remaining ? (
                 <>
                   Te quedan <b className="n" style={{ color: 'var(--teal)' }}>{fmt(remaining)} XP</b> en equipo sin
                   masterizar — la meta es alcanzable solo con eso.
@@ -687,8 +685,8 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             </span>
           </div>
           <div className="mrx-row">
-            <span>Restante hasta MR 30</span>
-            <span className="n">{fmt(toMr30)} XP</span>
+            <span>Restante hasta {mrLabel(goal)}</span>
+            <span className="n">{fmt(toGoal)} XP</span>
           </div>
         </div>
       </section>

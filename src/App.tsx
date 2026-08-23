@@ -8,7 +8,7 @@ import { PrimeDetail } from './views/PrimeDetail';
 import { SyncButton } from './components/SyncButton';
 import { SyncStatus } from './components/SyncStatus';
 import { Icon } from './components/Icon';
-import { MR30_XP, fmt, mrFromXp, totalXp } from './lib/mastery';
+import { fmt, mrGoal, totalXp } from './lib/mastery';
 import { DATA, MASTERY_GEAR, PRIMES } from './lib/gameData';
 import './app.css';
 
@@ -30,7 +30,7 @@ function initialFromHash(): { tab: Tab; prime: string | null } {
   return { tab, prime: prime || null };
 }
 
-/** Anillo de progreso hacia MR 30. */
+/** Anillo de progreso hacia el rango objetivo. */
 function Ring({ pct }: { pct: number }) {
   const C = 94.2; // 2πr con r = 15
   return (
@@ -62,8 +62,7 @@ function Shell() {
   };
 
   const xp = totalXp(progress);
-  const mr = mrFromXp(xp);
-  const pct = Math.min(100, (xp / MR30_XP) * 100);
+  const { mr, goal, pct } = mrGoal(xp);
   const detail = openPrime ? PRIMES.find((p) => p.name === openPrime) : undefined;
 
   return (
@@ -105,7 +104,9 @@ function Shell() {
             <Ring pct={pct} />
             <div>
               <b className="n">MR {mr}</b>
-              <span className="n">{pct.toFixed(0)}% a MR30</span>
+              <span className="n">
+                {Math.floor(pct)}% a {goal > 30 ? `LR${goal - 30}` : 'MR30'}
+              </span>
             </div>
           </div>
         </div>
