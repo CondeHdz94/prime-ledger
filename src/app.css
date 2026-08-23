@@ -786,6 +786,14 @@
 .lrow.is-done .lname b { text-decoration: line-through; text-decoration-color: var(--hair); }
 .lrow.is-done .lxp { color: var(--text-faint); }
 .lrow.is-done:hover { opacity: 0.75; }
+/* tabular-nums: sin esto la cuenta regresiva baila de ancho cada segundo */
+.ltimer {
+  font-family: var(--d);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-style: normal;
+  color: var(--gold);
+}
 
 /* frescura del dato: sin esto el panel envejece en silencio */
 .syncbox { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 3px; }
