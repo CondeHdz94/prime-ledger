@@ -28,7 +28,7 @@ interface DeInventory {
 }
 
 export interface AlecaImportResult {
-  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics'> & { extras: Extras };
+  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics' | 'ranks'> & { extras: Extras };
   summary: {
     mrInGame?: number;
     partsFound: number;
@@ -36,6 +36,8 @@ export interface AlecaImportResult {
     /** ítems masterizables que ya están en tu arsenal */
     gearOwned: number;
     itemsMastered: number;
+    /** ítems a medio subir, que ya aportan XP sin estar al tope */
+    itemsPartial: number;
     relicCount: number;
     starChartNodes: number;
     steelPathNodes: number;
@@ -126,13 +128,26 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   const gearOwned = Object.keys(built).length;
 
   const mastered: Record<string, boolean> = {};
+  const ranks: Record<string, number> = {};
   let itemsMastered = 0;
+  let itemsPartial = 0;
   for (const g of MASTERY_GEAR) {
     if (!g.un || !g.aff) continue;
     const xp = xpByType.get(g.un);
-    if (xp !== undefined && xp >= g.aff) {
+    if (xp === undefined) continue;
+    if (xp >= g.aff) {
       mastered[g.name] = true;
       itemsMastered++;
+      continue;
+    }
+    // La afinidad para el rango n es k·n², y k sale del propio catálogo:
+    // aff es la del rango tope, o sea k·cap². Invertir eso da el rango actual
+    // sin duplicar aquí la tabla de 500/1000 por categoría.
+    const k = g.aff / (g.cap * g.cap);
+    const rank = Math.min(g.cap, Math.floor(Math.sqrt(xp / k)));
+    if (rank > 0) {
+      ranks[g.name] = rank;
+      itemsPartial++;
     }
   }
 
@@ -153,7 +168,14 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   }
 
   // Star chart, junctions e intrínsecos -------------------------------------
-  const nodeSet = new Set(DATA.starChartNodes);
+  // Un nodo hecho en Steel Path aparece una sola vez, con Tier 1 — pero el
+  // Steel Path exige el star chart completo, así que hacerlo en SP implica
+  // haberlo hecho en normal. Contarlos como excluyentes descontaba justo los
+  // nodos de quien más ha jugado.
+  //
+  // Tampoco se exige que el tag esté en el catálogo: @wfcd/items sólo trae 269
+  // nodos y de ahí 26 son ClanNode (dojo, no star chart), así que faltan
+  // decenas de SolNode reales. El prefijo del tag es un filtro más fiable.
   let normalNodes = 0;
   let spNodes = 0;
   let junctions = 0;
@@ -161,14 +183,16 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   for (const m of inv.Missions ?? []) {
     const sp = m.Tier === 1;
     if (/Junction$/.test(m.Tag)) {
+      junctions++;
       if (sp) junctionsSP++;
-      else junctions++;
-    } else if (nodeSet.has(m.Tag)) {
+    } else if (/^(SolNode|SettlementNode)/.test(m.Tag)) {
+      normalNodes++;
       if (sp) spNodes++;
-      else normalNodes++;
     }
   }
-  const totalNodes = Math.max(1, DATA.starChartNodes.length);
+  // El catálogo se queda corto, así que el denominador nunca puede ser menor
+  // que lo que el jugador ya tiene hecho: si no, el porcentaje pasaría de 100.
+  const totalNodes = Math.max(1, DATA.starChartNodes.length, normalNodes);
 
   const skills = inv.PlayerSkills ?? {};
   const sum = (prefix: string, exclude?: string) =>
@@ -187,13 +211,14 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   };
 
   return {
-    patch: { parts, built, mastered, relics, extras },
+    patch: { parts, built, mastered, ranks, relics, extras },
     summary: {
       mrInGame: inv.PlayerLevel,
       partsFound,
       primesBuilt,
       gearOwned,
       itemsMastered,
+      itemsPartial,
       relicCount,
       starChartNodes: normalNodes,
       steelPathNodes: spNodes,

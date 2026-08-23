@@ -1,5 +1,6 @@
 import type { MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
 import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
+import { pendingXp } from './mastery';
 
 export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
 
@@ -312,7 +313,9 @@ export function sourceLabel(src: RelicSource | undefined): string {
 export function levelUpQueue(progress: Progress): MasteryItem[] {
   return MASTERY_GEAR.filter(
     (g) => progress.built[g.name] && !progress.mastered[g.name] && !g.founders,
-  ).sort((a, b) => b.xp - a.xp || a.name.localeCompare(b.name));
+    // Ordenado por lo que todavía puede dar, no por su total: un arma en
+    // 28/30 rinde menos que una intacta que valga lo mismo.
+  ).sort((a, b) => pendingXp(b, progress) - pendingXp(a, progress) || a.name.localeCompare(b.name));
 }
 
 /**

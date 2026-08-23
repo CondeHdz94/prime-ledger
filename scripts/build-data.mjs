@@ -121,7 +121,10 @@ for (const [key, sources] of relicSources) {
 }
 
 // ---------------------------------------------------------------- primes
-const gear = new Items({ category: GEAR_CATEGORIES });
+// El filtro `{ category }` de @wfcd/items no devuelve los 'Companion Weapon'
+// (24 armas de centinela masterizables) pese a que su category ES 'Primary'.
+// Filtrando en JS sobre el set completo aparecen: 803 masterizables, no 779.
+const gear = [...new Items({})].filter((i) => GEAR_CATEGORIES.includes(i.category));
 const primes = [];
 for (const item of gear) {
   if (!item.isPrime || !item.masterable) continue;

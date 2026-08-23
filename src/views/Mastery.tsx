@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CATEGORY_LABEL, MASTERY_GEAR } from '../lib/gameData';
 import { useStore } from '../lib/store';
 import { levelUpQueue } from '../lib/selectors';
-import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrFromXp, remainingGearXp, totalXp } from '../lib/mastery';
+import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { CatIcon, Icon } from '../components/Icon';
 import type { Extras, MasteryItem } from '../types';
 
@@ -64,14 +64,13 @@ export function Mastery() {
   }, [q, onlyPending, onlyOwned, progress.mastered, progress.built]);
 
   const xp = totalXp(progress);
-  const mr = mrFromXp(xp);
+  const { mr, goal, toGoal, pct, chasingMr30 } = mrGoal(xp);
   const remaining = remainingGearXp(progress);
   const masteredCount = MASTERY_GEAR.filter((g) => progress.mastered[g.name]).length;
   const ownedPending = useMemo(() => levelUpQueue(progress), [progress]);
-  const ownedPendingXp = ownedPending.reduce((n, g) => n + g.xp, 0);
+  const ownedPendingXp = ownedPending.reduce((n, g) => n + pendingXp(g, progress), 0);
   const gearPct = (masteredCount / MASTERY_GEAR.length) * 100;
-  const toMr30 = Math.max(0, MR30_XP - xp);
-  const reachable = toMr30 <= remaining;
+  const reachable = toGoal <= remaining;
 
   return (
     <div className="stack">
@@ -110,22 +109,22 @@ export function Mastery() {
           <b className="n">{fmt(gearXp(progress))}</b>
           <p>+ {fmt(extrasXp(progress.extras))} XP de star chart, junctions e intrínsecos</p>
           <div className="bar" style={{ marginTop: 12 }}>
-            <i style={{ width: `${Math.min(100, (xp / MR30_XP) * 100)}%` }} />
+            <i style={{ width: `${pct}%` }} />
           </div>
         </div>
 
         <div className="card card--inlay">
           <span className="k">{reachable ? 'Techo alcanzable' : 'Falta por cubrir'}</span>
           <b className="n" style={{ color: reachable ? 'var(--teal)' : 'var(--red)' }}>
-            {reachable ? 'MR 30' : `MR ${mr}`}
+            {reachable ? mrLabel(goal) : `MR ${mr}`}
           </b>
           <p>
             {reachable
               ? `quedan ${fmt(remaining)} XP en equipo pendiente · sobra margen`
-              : `el equipo pendiente da ${fmt(remaining)} XP y faltan ${fmt(toMr30)}`}
+              : `el equipo pendiente da ${fmt(remaining)} XP y faltan ${fmt(toGoal)}`}
           </p>
           <div className={`bar ${reachable ? 'bar--teal' : ''}`} style={{ marginTop: 12 }}>
-            <i style={{ width: `${Math.min(100, (remaining / Math.max(1, toMr30)) * 100)}%` }} />
+            <i style={{ width: `${Math.min(100, (remaining / Math.max(1, toGoal)) * 100)}%` }} />
           </div>
         </div>
       </div>
@@ -234,7 +233,7 @@ export function Mastery() {
                       onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
                       title={
                         owned
-                          ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(item.xp)} XP (rango ${item.cap})`
+                          ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
                           : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`
                       }
                       aria-pressed={on}
@@ -260,8 +259,11 @@ export function Mastery() {
       <div className="foot">
         <Icon name="info" size={14} width={1.6} />
         <span>
-          MR {mr} son {fmt(xp)} XP. Cada rango cuesta 2.500 × rango²; MR 30 son {fmt(MR30_XP)}. Los ítems con ✦ son de
-          Founders y no cuentan como alcanzables.
+          MR {mr} son {fmt(xp)} XP.{' '}
+          {chasingMr30
+            ? `Cada rango cuesta 2.500 × rango²; MR 30 son ${fmt(MR30_XP)}.`
+            : 'Pasado MR 30 cada rango legendario cuesta 147.500 XP fijos.'}{' '}
+          Los ítems con ✦ son de Founders y no cuentan como alcanzables.
         </span>
       </div>
     </div>
