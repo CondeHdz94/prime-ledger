@@ -288,14 +288,59 @@
 
 /* ── catálogo de primes ────────────────────────────────────── */
 
-.filters { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+/* Barra de filtros: tres grupos multi-select (OR dentro, AND entre grupos) y
+   un grupo vacío no filtra. La etiqueta a la izquierda reemplaza al `.vsep`,
+   que al envolver la fila quedaba huérfano al final de línea. */
+.filterbar { display: flex; flex-direction: column; gap: 10px; }
+.fb-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.fgroup { display: grid; grid-template-columns: 74px 1fr; align-items: start; gap: 10px; }
+.fg-label {
+  font-family: var(--d);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-top: 11px; /* centra contra la primera fila de chips (min-height 34) */
+}
+.fg-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+
+/* casilla = "acumula". El `.seg` (excluyente) se reserva para lo que sí lo es. */
+.chip--check { padding-left: 10px; }
+.chk {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--void);
+  transition: background 0.16s, border-color 0.16s;
+}
+.chip--check.is-on .chk { background: var(--gold); border-color: var(--gold); }
+.chip:disabled { opacity: 0.36; }
+.chip:disabled:hover { border-color: var(--line); color: var(--text-dim); }
+
+/* el color del chip encendido calza con el badge que verás en la tarjeta */
+.chip--teal.is-on { color: var(--teal); background: var(--teal-glow); border-color: color-mix(in oklab, var(--teal) 34%, transparent); }
+.chip--teal.is-on .chk { background: var(--teal); border-color: var(--teal); }
+.chip--blue.is-on { color: var(--blue); background: var(--blue-glow); border-color: color-mix(in oklab, var(--blue) 34%, transparent); }
+.chip--blue.is-on .chk { background: var(--blue); border-color: var(--blue); }
+.chip--red.is-on { color: var(--red); background: var(--red-glow); border-color: color-mix(in oklab, var(--red) 34%, transparent); }
+.chip--red.is-on .chk { background: var(--red); border-color: var(--red); }
+
+.chip--clear { color: var(--text-faint); }
+.chip--clear:hover { color: var(--red); border-color: color-mix(in oklab, var(--red) 40%, transparent); }
+
 .search { position: relative; width: 250px; flex: none; }
 .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
 .search input { padding-left: 36px; width: 100%; }
 .search--sm { width: 190px; }
 .search--sm input { padding: 6px 10px 6px 32px; min-height: 34px; border-radius: 99px; }
 .search--sm svg { left: 11px; }
-.vsep { width: 1px; align-self: stretch; background: var(--line); margin: 0 3px; }
 
 .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 12px; }
 .pcard {
@@ -568,6 +613,19 @@
   .goals { grid-template-columns: 1fr; }
   .goal-v b { font-size: 38px; }
   .search { width: 100%; }
+  .fgroup { grid-template-columns: 1fr; gap: 5px; }
+  .fg-label { padding-top: 0; }
+  /* tres grupos apilados serían seis filas de chips en un móvil: rail con scroll */
+  .fg-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
+  .fg-chips::-webkit-scrollbar { display: none; }
+  .fg-sorts { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-height: 0; margin: 0 -16px; padding: 2px 16px; }
+  .fg-sorts::-webkit-scrollbar { display: none; }
+  /* la lista se queda en lo esencial: prime, piezas y estado */
+  .plist { --pcols: 20px 1fr 92px 108px; }
+  .pr-acq, .ph-acq, .pr-rel, .ph-rel, .pr-xp, .ph-xp { display: none; }
+  .phead { margin-left: 26px; }
+  .pr-star { width: 22px; height: 22px; }
+  .fb-r { margin-left: 0; width: 100%; }
   .frow { grid-template-columns: 18px 1fr auto; }
   .frow .fcov { display: none; }
   .fdet { padding-left: 20px; }
@@ -678,6 +736,99 @@
 .hs-pct { color: var(--teal); white-space: nowrap; }
 
 /* estrella en la tarjeta del catálogo */
+
+/* ── vista lista ────────────────────────────────────────────
+   Las tarjetas sirven para explorar; la lista para comparar. Una sola
+   plantilla de columnas para la cabecera y las filas: si se desalinean, se
+   desalinean juntas. */
+.plist {
+  --pcols: 22px 1fr 130px 116px 116px 56px 74px;
+  display: flex;
+  flex-direction: column;
+}
+.phead,
+.prow {
+  display: grid;
+  grid-template-columns: var(--pcols);
+  align-items: center;
+  gap: 12px;
+}
+.phead {
+  margin-left: 30px; /* deja sitio a la estrella, que vive fuera de la fila */
+  padding: 0 12px 8px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.ph-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--d);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  transition: color 0.16s;
+}
+button.ph-cell:hover { color: var(--text); }
+/* la flecha solo se ve en la columna que manda; en las demás es una pista al pasar */
+.ph-cell svg { opacity: 0; transition: opacity 0.16s; }
+button.ph-cell:hover svg { opacity: 0.5; }
+.ph-cell.is-on { color: var(--gold-bright); }
+.ph-cell.is-on svg { opacity: 1; }
+.ph-xp { justify-content: flex-end; }
+
+.prow-wrap { display: flex; align-items: center; gap: 4px; }
+.prow-wrap + .prow-wrap { border-top: 1px solid var(--line-soft); }
+.pr-star { width: 26px; height: 26px; flex: none; opacity: 0.3; }
+.prow-wrap:hover .pr-star,
+.pr-star:focus-visible,
+.pr-star.is-on { opacity: 1; }
+.prow {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px 9px 4px;
+  border-radius: var(--r-s);
+  text-align: left;
+  transition: background 0.14s;
+}
+.prow:hover { background: var(--surface-2); }
+.prow-wrap.is-target .pr-n b { color: var(--gold-bright); }
+
+.pr-ico,
+.pr-art { width: 22px; height: 22px; flex: none; }
+.pr-art { object-fit: contain; }
+.pr-ico { color: var(--text-faint); display: flex; align-items: center; justify-content: center; }
+.prow:hover .pr-ico { color: var(--gold); }
+
+.pr-n { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pr-n b {
+  font-family: var(--d);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr-n span { font-size: 10.5px; color: var(--text-faint); white-space: nowrap; }
+
+.pr-parts { display: flex; align-items: center; gap: 9px; font-size: 11.5px; color: var(--text-dim); }
+.pr-parts .n { color: var(--text); flex: none; }
+.pr-parts .pips { flex: 1; }
+.pr-badge { display: flex; }
+.pr-rel { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.pr-xp { font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── orden en vista tarjetas ────────────────────────────────
+   Las mismas cabeceras de la lista, sacadas como un grupo más de la barra.
+   Un <select> nativo abría el popup del sistema operativo: la única pieza de
+   la página que no se podía estilar y la única que desentonaba. */
+.fb-r { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+.fg-sorts { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; min-height: 34px; min-width: 0; }
+/* área de toque decente sin engordar la fila */
+.sb-cell { padding: 5px 0; }
+
 .pcard-wrap { position: relative; display: flex; }
 .pcard-wrap .pcard { flex: 1; }
 .pc-star {

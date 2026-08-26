@@ -35,6 +35,41 @@ export function relicOwned(progress: Progress, relicKey: string): number {
   return Object.values(states).reduce((n, v) => n + (v ?? 0), 0);
 }
 
+/**
+ * Cómo puedes conseguir HOY lo que te falta de un prime. No son estados
+ * excluyentes: un prime vaulteado del que guardas reliquias es farmeable para
+ * ti aunque DE lo haya sacado de las tablas, así que `farmableNow` y
+ * `hasRelics` se solapan a propósito.
+ */
+export interface Acquisition {
+  /** alguna reliquia activa hoy suelta una pieza que te falta */
+  farmableNow: boolean;
+  /** tienes en inventario reliquias que sueltan piezas pendientes (activas o no) */
+  hasRelics: boolean;
+  /** queda algo pendiente y no hay reliquia activa ni tuya: trading / Varzia */
+  tradeOnly: boolean;
+}
+
+/** Ojo: solo mira las piezas PENDIENTES. Un prime ya completo no es
+ *  "farmeable" por mucho que sus reliquias sigan cayendo, y acumular sus
+ *  reliquias no debería encenderle el filtro de inventario. */
+export function acquisition(p: Prime, progress: Progress): Acquisition {
+  let farmableNow = false;
+  let hasRelics = false;
+  let pending = false;
+
+  for (const c of p.components) {
+    if (c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count) <= 0) continue;
+    pending = true;
+    for (const r of c.relics) {
+      if (r.active) farmableNow = true;
+      if (relicOwned(progress, r.relic) > 0) hasRelics = true;
+    }
+  }
+
+  return { farmableNow, hasRelics, tradeOnly: pending && !farmableNow && !hasRelics };
+}
+
 export interface FarmTarget {
   prime: Prime;
   component: PrimeComponent;
