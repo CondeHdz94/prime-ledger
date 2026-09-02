@@ -278,7 +278,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                   <span className="hunt-c n">
                     {h.owned}/{h.total}
                   </span>
-                  <TargetStar primeName={h.prime.name} size={13} label />
+                  <TargetStar primeName={h.prime.name} size={15} />
                 </div>
 
                 {h.total > 0 && (

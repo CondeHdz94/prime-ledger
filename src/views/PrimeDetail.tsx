@@ -189,7 +189,7 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
               </span>
             </div>
             <span className="dw-tools">
-              <TargetStar primeName={prime.name} size={14} label />
+              <TargetStar primeName={prime.name} size={17} />
               <button className="dw-x" onClick={onClose} aria-label="Cerrar">
                 <Icon name="close" size={15} width={1.8} />
               </button>

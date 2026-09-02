@@ -626,30 +626,6 @@
 .star:hover { color: var(--gold-bright); background: var(--glow); }
 .star.is-on { color: var(--gold); }
 .star.is-on:hover { color: var(--gold-bright); }
-/* Con texto: un control que se descubre sin hover. Ancho fijo donde vive en
-   una grilla (fila de la lista) para que «Seguir» y «Siguiendo» no muevan las
-   columnas. */
-.star--label {
-  width: auto;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 10px 0 8px;
-  border-radius: 99px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--text-dim);
-  font-family: var(--d);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: color 0.16s, background 0.16s, border-color 0.16s;
-}
-.star--label:hover { border-color: var(--hair); color: var(--gold-bright); background: var(--glow); }
-.star--label.is-on { border-color: var(--hair); color: var(--gold); background: var(--glow); }
 
 .hunt-hint {
   display: flex;
