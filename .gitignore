@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 src/data/lastData.dat
+
+# preferencias locales de Claude Code (no compartidas)
+.claude/settings.local.json

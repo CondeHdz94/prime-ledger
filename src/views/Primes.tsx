@@ -78,14 +78,14 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
   const e = uiStatus(st);
   const step = nextStep(row, progress);
   return (
-    /* La estrella va fuera del botón de la tarjeta: un <button> dentro de otro
+    /* La mira va fuera del botón de la tarjeta: un <button> dentro de otro
        <button> es HTML inválido y rompe el teclado. */
     <div
       className={`pcard-wrap rise ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''} ${e === 'mastered' ? 'is-mastered' : ''}`}
       style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }}
     >
       {pinned && <i className="pin-tag">Anclado</i>}
-      <TargetStar primeName={p.name} size={15} className="pc-star" />
+      <TargetStar primeName={p.name} size={14} className="pc-star" />
       <button className="card pcard" onClick={() => onOpen(p.name)}>
         <span className="pc-top">
           <PrimeArt image={p.image} category={p.category} size={26} imgClass="pc-art" glyphClass="pc-ico" />

@@ -10,13 +10,13 @@ import type { HistoryEvent } from '../types';
 const KIND_ICON: Record<HistoryEvent['kind'], IconName> = {
   part: 'relic',
   built: 'hammer',
-  mastered: 'star',
-  unmastered: 'star',
+  mastered: 'mastery',
+  unmastered: 'minus',
   extra: 'up',
   import: 'up',
   sync: 'sync',
   note: 'note',
-  target: 'star',
+  target: 'target',
 };
 
 function groupByDay(events: HistoryEvent[]) {

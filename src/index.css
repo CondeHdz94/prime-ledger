@@ -22,7 +22,9 @@
   /* platino */
   --text: #ece8dd;
   --text-dim: #9c988e;
-  --text-faint: #6a675f;
+  /* 3,4:1 era el único token bajo AA; #8b8780 da 5,3:1 sobre --surface sin
+     dejar de leerse como el gris más apagado */
+  --text-faint: #8b8780;
 
   /* semántica — cada color dice una sola cosa */
   --teal: #58c7c0;            /* accionable ya */
@@ -45,8 +47,20 @@
   --d: 'Space Grotesk', 'Segoe UI', sans-serif;
   --b: 'IBM Plex Sans', 'Segoe UI', sans-serif;
 
+  /* escala tipográfica: seis escalones y nada por debajo de 12 px. Había 20
+     tamaños distintos (46 con medios píxeles); el suelo de 10 px vivía justo en
+     los badges y etiquetas que codifican estado. Los display (25–46) van
+     literales en sus cinco cifras-héroe. */
+  --fs-xs: 12px;   /* etiquetas, badges, meta, pies */
+  --fs-s: 13px;    /* filas, botones, chips */
+  --fs-m: 14px;    /* cuerpo */
+  --fs-l: 15px;    /* nombre de fila, énfasis en línea */
+  --fs-xl: 17px;   /* título de sección */
+  --fs-2xl: 20px;  /* cifra destacada */
+
   --r: 12px;
   --r-s: 8px;
+  --r-xs: 4px;     /* badges, checks, chips diminutos; las pips (5 px) siguen a 2 px */
   --pad: 22px;
   --gap: 18px;
 }
@@ -59,7 +73,7 @@ body {
   background: var(--void);
   color: var(--text);
   font-family: var(--b);
-  font-size: 14px;
+  font-size: var(--fs-m);
   line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -110,7 +124,7 @@ svg { display: block; }
 
 .k {
   font-family: var(--d);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -172,7 +186,7 @@ svg { display: block; }
   border: 1px solid var(--line);
   border-radius: var(--r-s);
   font-family: var(--d);
-  font-size: 12.5px;
+  font-size: var(--fs-s);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--text-dim);
@@ -183,7 +197,7 @@ svg { display: block; }
 .btn--gold { background: var(--glow); border-color: var(--hair); color: var(--gold-bright); }
 .btn--gold:hover { background: color-mix(in oklab, var(--gold) 22%, transparent); }
 .btn--danger:hover { border-color: var(--red); color: var(--red); background: var(--red-glow); }
-.btn--sm { padding: 6px 12px; min-height: 30px; font-size: 11.5px; }
+.btn--sm { padding: 6px 12px; min-height: 30px; font-size: var(--fs-xs); }
 
 .chip {
   display: inline-flex;
@@ -194,7 +208,7 @@ svg { display: block; }
   border: 1px solid var(--line);
   border-radius: 99px;
   font-family: var(--d);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0.03em;
   color: var(--text-dim);
@@ -216,7 +230,7 @@ svg { display: block; }
   padding: 6px 14px;
   border-radius: 99px;
   font-family: var(--d);
-  font-size: 11.5px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--text-faint);
@@ -251,7 +265,7 @@ svg { display: block; }
 .segbar > i { display: block; height: 100%; transition: flex-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
 
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-.legend > span { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-dim); }
+.legend > span { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-dim); }
 .legend i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 
 /* pips de piezas: se ve cuántas faltan, no un relleno continuo */
@@ -264,9 +278,9 @@ svg { display: block; }
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   font-family: var(--d);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
