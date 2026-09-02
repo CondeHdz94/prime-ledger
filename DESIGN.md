@@ -164,8 +164,9 @@ antes de meter un `<svg>` suelto en una vista.
    (sin farmear → hay que farmear → en la foundry → solo jugar) es la tesis de
    la app y no se reordena. Los ordinales 00–04 decían que había orden pero no
    el criterio, y el pie tenía que explicarlo; la etiqueta `.sect-effort` lo
-   dice sola. Arriba de todo va «Tu próxima sesión»: la escalera resuelta en
-   una recomendación; las secciones son el detalle y nacen plegadas.
+   dice sola. «Tu próxima sesión» va tras las metas y los objetivos —
+   primero dónde estás, luego qué persigues, y entonces qué hacer — como cabeza
+   de la escalera; las secciones son el detalle y nacen plegadas.
 
 ## Deuda conocida
 

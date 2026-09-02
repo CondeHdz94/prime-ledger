@@ -161,47 +161,6 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
 
   return (
     <div className="stack">
-      {/* ── tu próxima sesión: la escalera resuelta en una frase ── */}
-      {session && (
-        <section className="card card--tick next rise">
-          <div className="next-h">
-            <span className="k">Tu próxima sesión</span>
-            <span className="badge badge--mastered">{session.primary.effort}</span>
-          </div>
-          <h2 className="next-t">{session.primary.title}</h2>
-          <p className="next-why">
-            {session.primary.forTarget && <b>Sirve a uno de tus objetivos. </b>}
-            {session.primary.why}
-          </p>
-          <div className="next-act">
-            {session.primary.primeName && (
-              <button className="btn btn--sm" onClick={() => onOpenPrime(session.primary.primeName!)}>
-                Ver {session.primary.primeName}
-              </button>
-            )}
-            <button className="btn btn--sm" onClick={() => goSect(SECT_OF[session.primary.kind])}>
-              Ver el detalle
-            </button>
-            <span className="next-v n">{session.primary.value}</span>
-          </div>
-          {session.alternatives.length > 0 && (
-            <div className="alts">
-              <span className="k">O en su lugar</span>
-              {session.alternatives.map((a) => (
-                <button key={a.kind} className="alt" onClick={() => goSect(SECT_OF[a.kind])}>
-                  <Icon name={ICON_OF[a.kind]} size={15} width={1.6} />
-                  <span className="alt-n">
-                    <b>{a.title}</b>
-                    <span>{a.why}</span>
-                  </span>
-                  <span className="alt-v n">{a.value}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
       {/* ── las dos metas, una por objetivo real ─────────────── */}
       <div className="goals">
         <section className="card card--inlay card--tick goal rise">
@@ -423,6 +382,49 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             completa para conseguirlo.
           </span>
         </div>
+      )}
+
+      {/* ── tu próxima sesión: la escalera resuelta en una frase.
+          Va tras el estado (metas) y los objetivos: primero dónde estás, luego
+          qué persigues, y entonces qué hacer — cabeza de la escalera. ── */}
+      {session && (
+        <section className="card card--tick next rise">
+          <div className="next-h">
+            <span className="k">Tu próxima sesión</span>
+            <span className="badge badge--mastered">{session.primary.effort}</span>
+          </div>
+          <h2 className="next-t">{session.primary.title}</h2>
+          <p className="next-why">
+            {session.primary.forTarget && <b>Sirve a uno de tus objetivos. </b>}
+            {session.primary.why}
+          </p>
+          <div className="next-act">
+            {session.primary.primeName && (
+              <button className="btn btn--sm" onClick={() => onOpenPrime(session.primary.primeName!)}>
+                Ver {session.primary.primeName}
+              </button>
+            )}
+            <button className="btn btn--sm" onClick={() => goSect(SECT_OF[session.primary.kind])}>
+              Ver el detalle
+            </button>
+            <span className="next-v n">{session.primary.value}</span>
+          </div>
+          {session.alternatives.length > 0 && (
+            <div className="alts">
+              <span className="k">O en su lugar</span>
+              {session.alternatives.map((a) => (
+                <button key={a.kind} className="alt" onClick={() => goSect(SECT_OF[a.kind])}>
+                  <Icon name={ICON_OF[a.kind]} size={15} width={1.6} />
+                  <span className="alt-n">
+                    <b>{a.title}</b>
+                    <span>{a.why}</span>
+                  </span>
+                  <span className="alt-v n">{a.value}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* ── 01 · abre lo que ya tienes ────────────────────────── */}

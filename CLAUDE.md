@@ -66,10 +66,11 @@ categoría nueva del catálogo no aparece rota, aparece sin etiqueta o al final.
   data del usuario **nunca sale de su máquina**: cualquier cambio aquí mantiene
   esa propiedad.
 - `lib/store.tsx` — reducer + Context + localStorage.
-- `views/Today.tsx` — el panel. Arriba «Tu próxima sesión» (`nextSession()` en
-  `selectors.ts`: la escalera resuelta en una recomendación, consciente de tus
-  objetivos). Debajo, plegadas, las secciones en orden de esfuerzo: objetivos →
-  abre lo que ya tienes → farmea → construye → sube de rango. Ese orden es la
+- `views/Today.tsx` — el panel: metas (dónde estás) → objetivos (qué persigues) →
+  «Tu próxima sesión» (`nextSession()` en `selectors.ts`: la escalera resuelta
+  en una recomendación, consciente de tus objetivos) → y, plegadas, las
+  secciones en orden de esfuerzo: abre lo que ya tienes → farmea → construye →
+  sube de rango. Ese orden es la
   tesis de la app; no lo reordenes por conveniencia visual.
 
 ## Diseño
