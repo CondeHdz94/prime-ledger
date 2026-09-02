@@ -782,6 +782,7 @@ button.ph-cell:hover svg { opacity: 0.7; }
 /* visible desde el arranque: al 0.3 parecía decoración; alimenta la sección
    00 de Hoy y nadie descubre lo invisible */
 .pr-star { width: 30px; height: 30px; flex: none; }
+.prow-wrap:hover .pr-star { color: var(--text); background: var(--surface-2); }
 .prow {
   flex: 1;
   min-width: 0;
@@ -824,9 +825,13 @@ button.ph-cell:hover svg { opacity: 0.7; }
    la tarjeta fuera de su celda en vez de recortarse con elipsis */
 .pcard-wrap .pcard { flex: 1; min-width: 0; }
 /* Arriba a la derecha, donde la convención pone el «seguir» de una tarjeta.
-   Solo icono: el texto vive en la fila, el cajón y la sección 00, donde hay
-   sitio; aquí, a 238 px, chocaba con los nombres largos. Chip con borde y al
-   100 % — el fantasma al 35 % era el problema, no la falta de texto. */
+   Solo icono: el texto vive en el cajón y la sección 00, donde hay sitio.
+
+   Volumen bajo en reposo: solo el glifo, sin chip — 167 rectángulos con borde
+   competían con los badges. El chip aparece al pasar sobre la tarjeta, y
+   encendida («en la mira») va en oro siempre: eso es información, no un
+   control. Nunca opacidad baja: el fantasma al 35 % era invisible y nadie
+   descubría el control. */
 .pc-star {
   position: absolute;
   top: 9px;
@@ -834,12 +839,18 @@ button.ph-cell:hover svg { opacity: 0.7; }
   z-index: 2;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid transparent;
   transition: transform 0.16s, color 0.16s, background 0.16s, border-color 0.16s;
 }
-.pc-star:hover { border-color: var(--hair); }
-.pc-star.is-on { border-color: var(--hair); background: var(--glow); }
+.pcard-wrap:hover .pc-star,
+.pc-star:focus-visible { border-color: var(--line); background: var(--surface); color: var(--text); }
+.pc-star:hover { border-color: var(--hair); color: var(--gold-bright); }
+.pc-star.is-on,
+.pcard-wrap:hover .pc-star.is-on { border-color: var(--hair); background: var(--glow); color: var(--gold); }
+/* táctil: no hay hover, el chip se ve siempre */
+@media (pointer: coarse) {
+  .pc-star { border-color: var(--line); background: var(--surface); }
+}
 /* el nombre deja sitio al chip */
 .pc-top { padding-right: 32px; }
 .pcard-wrap.is-target .pcard { border-color: var(--hair); }
