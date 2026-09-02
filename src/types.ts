@@ -40,6 +40,12 @@ export interface RelicSource {
   chance: number;
 }
 
+/** Dependencia de crafteo entre dos ítems masterizables (Bolto ×2 → Akbolto). */
+export interface BuildDep {
+  name: string;
+  count: number;
+}
+
 export interface MasteryItem {
   name: string;
   un?: string;
@@ -51,6 +57,10 @@ export interface MasteryItem {
   /** total affinity at rank cap — threshold to detect "mastered" from XPInfo */
   aff?: number;
   founders?: true;
+  /** ítems que consumen éste al craftearse — no venderlo mientras alguno siga pendiente */
+  usedIn?: BuildDep[];
+  /** ítems masterizables que se consumen al construir éste */
+  needs?: BuildDep[];
 }
 
 export interface GameData {

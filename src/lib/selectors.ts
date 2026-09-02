@@ -1,4 +1,4 @@
-import type { MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
+import type { BuildDep, MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
 import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
 import { pendingXp } from './mastery';
 
@@ -351,6 +351,20 @@ export function sourceLabel(src: RelicSource | undefined): string {
    todo es el que ya está en tu arsenal sin subir: no hay que farmearlo,
    solo jugarlo. El import de AlecaFrame ya sabe qué tienes.
    ═══════════════════════════════════════════════════════════════ */
+
+/**
+ * Consumidores de este ítem que siguen pendientes: mientras quede alguno sin
+ * construir ni masterizar, el arma no se debe vender — craftear al consumidor
+ * la destruye. En cuanto el consumidor está construido (el ingrediente ya se
+ * gastó) o masterizado, la advertencia sobra y desaparece sola.
+ */
+export function pendingConsumers(item: MasteryItem | undefined, progress: Progress): BuildDep[] {
+  return (item?.usedIn ?? []).filter((u) => !progress.built[u.name] && !progress.mastered[u.name]);
+}
+
+/** "Akbolto ×2, Hystrix" — texto corto de una lista de dependencias. */
+export const depLabel = (deps: BuildDep[]) =>
+  deps.map((d) => `${d.name}${d.count > 1 ? ` ×${d.count}` : ''}`).join(', ');
 
 /** Equipo en tu arsenal que aún no llega a rango máximo, lo más jugoso primero. */
 export function levelUpQueue(progress: Progress): MasteryItem[] {

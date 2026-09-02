@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CATEGORY_LABEL, MASTERY_GEAR } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { levelUpQueue } from '../lib/selectors';
+import { depLabel, levelUpQueue, pendingConsumers } from '../lib/selectors';
 import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { CatIcon, Icon } from '../components/Icon';
 import type { Extras, MasteryItem } from '../types';
@@ -226,16 +226,21 @@ export function Mastery() {
                   const on = !!progress.mastered[item.name];
                   // lo tienes pero no lo has subido: XP a un rato de juego
                   const owned = !on && !!progress.built[item.name];
+                  // es ingrediente de un crafteo aún pendiente: no venderlo
+                  const keep = pendingConsumers(item, progress);
+                  const notes = [
+                    keep.length > 0 ? `⚠ NO VENDER: se consume al construir ${depLabel(keep)}` : '',
+                    item.needs?.length ? `construirlo gasta ${depLabel(item.needs)}` : '',
+                  ].filter(Boolean);
+                  const base = owned
+                    ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
+                    : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`;
                   return (
                     <button
                       key={item.name}
                       className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''}`}
                       onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
-                      title={
-                        owned
-                          ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
-                          : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`
-                      }
+                      title={[base, ...notes].join(' · ')}
                       aria-pressed={on}
                     >
                       <span className="mi-check">{on && <Icon name="check" size={9} width={3} />}</span>
@@ -243,6 +248,7 @@ export function Mastery() {
                         {item.name}
                         {item.founders ? ' ✦' : ''}
                       </span>
+                      {keep.length > 0 && <Icon name="hammer" size={11} width={1.8} className="mi-keep" />}
                       <span className="mi-xp n">
                         {item.cap > 30 ? `R${item.cap} ` : ''}
                         {(item.xp / 1000).toFixed(0)}k
@@ -263,7 +269,8 @@ export function Mastery() {
           {chasingMr30
             ? `Cada rango cuesta 2.500 × rango²; MR 30 son ${fmt(MR30_XP)}.`
             : 'Pasado MR 30 cada rango legendario cuesta 147.500 XP fijos.'}{' '}
-          Los ítems con ✦ son de Founders y no cuentan como alcanzables.
+          Los ítems con ✦ son de Founders y no cuentan como alcanzables. El martillo marca un arma que otro
+          crafteo pendiente consume como ingrediente: no la vendas hasta construirlo (detalle en el tooltip).
         </span>
       </div>
     </div>

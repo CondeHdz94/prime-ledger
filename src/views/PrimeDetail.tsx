@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Prime, PrimeComponent, Refinement, RelicRef } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, marketSetSlug, marketUrl, partsNeeded, relicSources } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { ownedParts, primeStatus, relicOwned, sourceLabel, STATUS_LABEL } from '../lib/selectors';
+import { depLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, sourceLabel, STATUS_LABEL } from '../lib/selectors';
 import { fmt } from '../lib/mastery';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
@@ -108,8 +108,12 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   const st = primeStatus(prime, progress);
   const owned = ownedParts(prime, progress);
   const total = partsNeeded(prime);
-  const masteryXp = MASTERY_GEAR.find((g) => g.name === prime.name)?.xp;
+  const gearItem = MASTERY_GEAR.find((g) => g.name === prime.name);
+  const masteryXp = gearItem?.xp;
   const setSlug = marketSetSlug(prime);
+  // dependencias de crafteo: este prime se consume en otro, o consume a otro
+  const keep = pendingConsumers(gearItem, progress);
+  const needs = gearItem?.needs ?? [];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -221,6 +225,35 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
               />
               <span>{verdict}</span>
             </div>
+
+            {/* dependencias de crafteo: la razón para NO vender aunque esté masterizado */}
+            {keep.length > 0 && (
+              <div className="goal-note">
+                <Icon name="hammer" size={15} width={1.7} color="var(--gold)" />
+                <span>
+                  <b style={{ color: 'var(--gold-bright)' }}>No lo vendas:</b> se consume como ingrediente al
+                  construir <b>{depLabel(keep)}</b>. Guárdalo hasta tener ese crafteo hecho.
+                </span>
+              </div>
+            )}
+            {needs.length > 0 && (
+              <div className="goal-note">
+                <Icon name="hammer" size={15} width={1.7} color="var(--gold)" />
+                <span>
+                  Además de las piezas, construirlo consume{' '}
+                  <b>
+                    {needs
+                      .map((n) => `${n.count > 1 ? `${n.count}× ` : ''}${n.name}`)
+                      .join(' + ')}
+                  </b>
+                  {needs.every((n) => progress.built[n.name])
+                    ? ` — según tu último sync ya ${needs.length > 1 ? 'los' : 'lo'} tienes.`
+                    : needs.every((n) => progress.built[n.name] || progress.mastered[n.name])
+                      ? ` — ${needs.length > 1 ? 'los' : 'lo'} masterizaste, pero confirma que no ${needs.length > 1 ? 'los' : 'lo'} vendiste.`
+                      : ` — tendrás que conseguir${needs.length > 1 ? 'los' : 'lo'} primero.`}
+                </span>
+              </div>
+            )}
 
             <div className="dw-acts">
               <button

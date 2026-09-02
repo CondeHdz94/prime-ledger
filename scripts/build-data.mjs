@@ -197,6 +197,34 @@ for (const item of gear) {
 masteryGear.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 console.log('masterable Misc types:', JSON.stringify(miscCats));
 
+// ---------------------------------------------------------------- build deps
+// Armas que se consumen al craftear otras (Bolto ×2 → Akbolto, Broken War →
+// War): el catálogo las trae como components cuyo uniqueName es otro ítem
+// masterizable. Los duplicados suman — Akbronco Prime lista "Bronco Prime x1"
+// dos veces porque necesita 2.
+const gearByUn = new Map(masteryGear.map((g) => [g.un, g]));
+const gearByName = new Map(masteryGear.map((g) => [g.name, g]));
+for (const item of gear) {
+  if (!item.masterable) continue;
+  const consumer = gearByName.get(item.name);
+  if (!consumer) continue;
+  const counts = new Map();
+  for (const comp of item.components ?? []) {
+    const ing = gearByUn.get(comp.uniqueName);
+    if (ing && ing.name !== item.name) counts.set(ing.name, (counts.get(ing.name) ?? 0) + (comp.itemCount ?? 1));
+  }
+  for (const [name, count] of [...counts].sort(([a], [b]) => a.localeCompare(b))) {
+    (consumer.needs ??= []).push({ name, count });
+    (gearByName.get(name).usedIn ??= []).push({ name: item.name, count });
+  }
+}
+for (const g of masteryGear) g.usedIn?.sort((a, b) => a.name.localeCompare(b.name));
+console.log(
+  'build deps:',
+  masteryGear.filter((g) => g.usedIn).length, 'ingredientes →',
+  masteryGear.filter((g) => g.needs).length, 'consumidores',
+);
+
 // ---------------------------------------------------------------- relic index
 // uniqueName (sin prefijo) -> "Lith S1 Intact" — para leer el inventario de
 // reliquias importado de AlecaFrame (MiscItems /Lotus/Types/Game/Projections/…)
