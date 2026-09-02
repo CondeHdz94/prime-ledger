@@ -113,7 +113,15 @@ export const buildRows = (progress: Progress): Row[] =>
 export type PresetId = 'reach' | 'oneLeft' | 'ready' | 'targets' | 'all';
 
 export const PRESETS: { id: PresetId; label: string; pred: (r: Row, progress: Progress) => boolean }[] = [
-  { id: 'reach', label: 'A mi alcance', pred: (r) => (r.st === 'missing' || r.st === 'partial') && r.acq.farmableNow },
+  /**
+   * «A mi alcance» = todo lo que puedes conseguir sin tradear: reliquia
+   * activa hoy O reliquia tuya en inventario — una llave tuya se abre igual
+   * aunque el prime esté en el Vault (caso Nami Skyla: todas sus reliquias
+   * vaulteadas, pero las tienes). Solo con `farmableNow` la vista era un
+   * alias exacto de la casilla "Farmeable hoy". `acquisition()` ya garantiza
+   * que ambos flags solo encienden con piezas pendientes.
+   */
+  { id: 'reach', label: 'A mi alcance', pred: (r) => r.acq.farmableNow || r.acq.hasRelics },
   { id: 'oneLeft', label: 'Falta 1 pieza', pred: (r) => r.total - r.owned === 1 && r.st !== 'built' && r.st !== 'mastered' },
   { id: 'ready', label: 'Piezas listas', pred: (r) => r.st === 'ready' },
   { id: 'targets', label: 'Mis objetivos', pred: (r, progress) => progress.targets[r.p.name] === true },
