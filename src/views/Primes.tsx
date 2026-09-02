@@ -85,7 +85,7 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
       style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }}
     >
       {pinned && <i className="pin-tag">Anclado</i>}
-      <TargetStar primeName={p.name} size={13} className="pc-star" label />
+      <TargetStar primeName={p.name} size={14} className="pc-star" />
       <button className="card pcard" onClick={() => onOpen(p.name)}>
         <span className="pc-top">
           <PrimeArt image={p.image} category={p.category} size={26} imgClass="pc-art" glyphClass="pc-ico" />

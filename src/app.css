@@ -331,7 +331,6 @@
 .pcard-wrap:hover .pcard,
 .pcard:focus-visible { border-color: var(--hair); background: var(--surface-2); transform: translateY(-2px); }
 .pcard-wrap:hover .pc-star { transform: translateY(-2px); }
-.pc-star { transition: transform 0.16s; }
 .pc-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .pc-ico,
 .pc-art {
@@ -828,16 +827,25 @@ button.ph-cell:hover svg { opacity: 0.7; }
    de siguiente paso larga (nodos tipo "Level 40 - 60 PROFIT-TAKER…") estira
    la tarjeta fuera de su celda en vez de recortarse con elipsis */
 .pcard-wrap .pcard { flex: 1; min-width: 0; }
-/* Abajo a la derecha, sobre la línea de siguiente paso: arriba competía con
-   nombres largos en tarjetas de 238 px, y el pie es texto que ya se recorta
-   con elipsis y tooltip. Siempre visible: es la palanca de la sección 00. */
+/* Arriba a la derecha, donde la convención pone el «seguir» de una tarjeta.
+   Solo icono: el texto vive en la fila, el cajón y la sección 00, donde hay
+   sitio; aquí, a 238 px, chocaba con los nombres largos. Chip con borde y al
+   100 % — el fantasma al 35 % era el problema, no la falta de texto. */
 .pc-star {
   position: absolute;
-  right: 11px;
-  bottom: 11px;
+  top: 9px;
+  right: 9px;
   z-index: 2;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: transform 0.16s, color 0.16s, background 0.16s, border-color 0.16s;
 }
-.pc-next { padding-right: 84px; }
+.pc-star:hover { border-color: var(--hair); }
+.pc-star.is-on { border-color: var(--hair); background: var(--glow); }
+/* el nombre deja sitio al chip */
+.pc-top { padding-right: 32px; }
 .pcard-wrap.is-target .pcard { border-color: var(--hair); }
 
 .dw-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
