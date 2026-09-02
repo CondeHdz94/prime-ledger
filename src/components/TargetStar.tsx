@@ -10,17 +10,21 @@ export function TargetStar({
   primeName,
   size = 16,
   className = '',
+  label = false,
 }: {
   primeName: string;
   size?: number;
   className?: string;
+  /** con texto («Seguir» / «Siguiendo»): un icono solo al 35 % de opacidad era
+   *  la palanca que alimenta la sección 00 y lo menos visible de la tarjeta */
+  label?: boolean;
 }) {
   const { progress, dispatch } = useStore();
   const on = !!progress.targets[primeName];
 
   return (
     <button
-      className={`star ${on ? 'is-on' : ''} ${className}`}
+      className={`star ${label ? 'star--label' : ''} ${on ? 'is-on' : ''} ${className}`}
       onClick={(e) => {
         e.stopPropagation();
         dispatch({ type: 'toggleTarget', primeName });
@@ -41,6 +45,7 @@ export function TargetStar({
       >
         <path d={STAR} />
       </svg>
+      {label && <span>{on ? 'Siguiendo' : 'Seguir'}</span>}
     </button>
   );
 }

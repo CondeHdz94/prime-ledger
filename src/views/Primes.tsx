@@ -85,7 +85,7 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
       style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }}
     >
       {pinned && <i className="pin-tag">Anclado</i>}
-      <TargetStar primeName={p.name} size={15} className="pc-star" />
+      <TargetStar primeName={p.name} size={13} className="pc-star" label />
       <button className="card pcard" onClick={() => onOpen(p.name)}>
         <span className="pc-top">
           <PrimeArt image={p.image} category={p.category} size={26} imgClass="pc-art" glyphClass="pc-ico" />
@@ -126,7 +126,7 @@ function PrimeRow({ row, pinned, onOpen }: { row: Row; pinned: boolean; onOpen: 
   const e = uiStatus(st);
   return (
     <div className={`prow-wrap ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''}`}>
-      <TargetStar primeName={p.name} size={14} className="pr-star" />
+      <TargetStar primeName={p.name} size={13} className="pr-star" label />
       <button className="prow" onClick={() => onOpen(p.name)}>
         <PrimeArt image={p.image} category={p.category} size={20} imgClass="pr-art" glyphClass="pr-ico" />
         <span className="pr-n">

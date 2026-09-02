@@ -597,8 +597,10 @@
   /* la lista se queda en lo esencial: prime, piezas y estado */
   .plist { --pcols: 32px 1fr 92px 108px; }
   .pr-acq, .ph-acq, .pr-rel, .ph-rel, .pr-xp, .ph-xp { display: none; }
-  .phead { margin-left: 26px; }
-  .pr-star { width: 22px; height: 22px; }
+  /* en móvil el botón vuelve a icono: 96 px por fila no caben */
+  .phead { margin-left: 34px; }
+  .pr-star { width: 30px; padding: 0; }
+  .pr-star span { display: none; }
   .frow { grid-template-columns: 18px 1fr auto; }
   .frow .fcov { display: none; }
   .fdet { padding-left: 20px; }
@@ -624,6 +626,30 @@
 .star:hover { color: var(--gold-bright); background: var(--glow); }
 .star.is-on { color: var(--gold); }
 .star.is-on:hover { color: var(--gold-bright); }
+/* Con texto: un control que se descubre sin hover. Ancho fijo donde vive en
+   una grilla (fila de la lista) para que «Seguir» y «Siguiendo» no muevan las
+   columnas. */
+.star--label {
+  width: auto;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: var(--d);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 0.16s, background 0.16s, border-color 0.16s;
+}
+.star--label:hover { border-color: var(--hair); color: var(--gold-bright); background: var(--glow); }
+.star--label.is-on { border-color: var(--hair); color: var(--gold); background: var(--glow); }
 
 .hunt-hint {
   display: flex;
@@ -727,7 +753,7 @@
   gap: 12px;
 }
 .phead {
-  margin-left: 30px; /* deja sitio a la estrella, que vive fuera de la fila */
+  margin-left: 100px; /* deja sitio al botón «Seguir», que vive fuera de la fila */
   padding: 0 12px 8px 4px;
   border-bottom: 1px solid var(--line);
 }
@@ -755,10 +781,7 @@ button.ph-cell:hover svg { opacity: 0.7; }
 .prow-wrap + .prow-wrap { border-top: 1px solid var(--line-soft); }
 /* visible desde el arranque: al 0.3 parecía decoración; alimenta la sección
    00 de Hoy y nadie descubre lo invisible */
-.pr-star { width: 26px; height: 26px; flex: none; opacity: 0.35; }
-.prow-wrap:hover .pr-star,
-.pr-star:focus-visible,
-.pr-star.is-on { opacity: 1; }
+.pr-star { width: 96px; flex: none; }
 .prow {
   flex: 1;
   min-width: 0;
@@ -800,21 +823,16 @@ button.ph-cell:hover svg { opacity: 0.7; }
    de siguiente paso larga (nodos tipo "Level 40 - 60 PROFIT-TAKER…") estira
    la tarjeta fuera de su celda en vez de recortarse con elipsis */
 .pcard-wrap .pcard { flex: 1; min-width: 0; }
+/* Abajo a la derecha, sobre la línea de siguiente paso: arriba competía con
+   nombres largos en tarjetas de 238 px, y el pie es texto que ya se recorta
+   con elipsis y tooltip. Siempre visible: es la palanca de la sección 00. */
 .pc-star {
   position: absolute;
-  top: 7px;
-  right: 7px;
+  right: 11px;
+  bottom: 11px;
   z-index: 2;
-  width: 28px;
-  height: 28px;
-  /* visible al 35% desde el arranque: nacía invisible hasta el hover y
-     alimenta la sección 00 de Hoy — nadie descubre lo invisible */
-  opacity: 0.35;
-  transition: opacity 0.16s, color 0.16s, background 0.16s;
 }
-.pcard-wrap:hover .pc-star,
-.pc-star:focus-visible,
-.pc-star.is-on { opacity: 1; }
+.pc-next { padding-right: 84px; }
 .pcard-wrap.is-target .pcard { border-color: var(--hair); }
 
 .dw-tools { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
@@ -823,7 +841,6 @@ button.ph-cell:hover svg { opacity: 0.7; }
   .hunts { grid-template-columns: 1fr; }
   .hstep { grid-template-columns: 1fr auto; gap: 4px 10px; }
   .hs-src { grid-column: 1 / -1; }
-  .pc-star { opacity: 1; }
 }
 
 /* arte del prime en el panel: mismas cajas que el glifo al que reemplaza */
