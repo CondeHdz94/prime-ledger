@@ -601,10 +601,6 @@
   /* la lista se queda en lo esencial: prime, piezas y estado */
   .plist { --pcols: 32px 1fr 92px 108px; }
   .pr-acq, .ph-acq, .pr-rel, .ph-rel, .pr-xp, .ph-xp { display: none; }
-  /* en móvil el botón vuelve a icono: 96 px por fila no caben */
-  .phead { margin-left: 34px; }
-  .pr-star { width: 30px; padding: 0; }
-  .pr-star span { display: none; }
   .frow { grid-template-columns: 18px 1fr auto; }
   .frow .fcov { display: none; }
   .fdet { padding-left: 20px; }
@@ -757,7 +753,7 @@
   gap: 12px;
 }
 .phead {
-  margin-left: 100px; /* deja sitio al botón «Seguir», que vive fuera de la fila */
+  margin-left: 34px; /* deja sitio a la mira, que vive fuera de la fila */
   padding: 0 12px 8px 4px;
   border-bottom: 1px solid var(--line);
 }
@@ -785,7 +781,7 @@ button.ph-cell:hover svg { opacity: 0.7; }
 .prow-wrap + .prow-wrap { border-top: 1px solid var(--line-soft); }
 /* visible desde el arranque: al 0.3 parecía decoración; alimenta la sección
    00 de Hoy y nadie descubre lo invisible */
-.pr-star { width: 96px; flex: none; }
+.pr-star { width: 30px; height: 30px; flex: none; }
 .prow {
   flex: 1;
   min-width: 0;

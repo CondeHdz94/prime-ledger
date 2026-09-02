@@ -126,7 +126,7 @@ function PrimeRow({ row, pinned, onOpen }: { row: Row; pinned: boolean; onOpen: 
   const e = uiStatus(st);
   return (
     <div className={`prow-wrap ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''}`}>
-      <TargetStar primeName={p.name} size={13} className="pr-star" label />
+      <TargetStar primeName={p.name} size={14} className="pr-star" />
       <button className="prow" onClick={() => onOpen(p.name)}>
         <PrimeArt image={p.image} category={p.category} size={20} imgClass="pr-art" glyphClass="pr-ico" />
         <span className="pr-n">
