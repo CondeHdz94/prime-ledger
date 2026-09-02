@@ -738,7 +738,7 @@
 .hs-src { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hs-pct { color: var(--teal); white-space: nowrap; }
 
-/* estrella en la tarjeta del catálogo */
+/* mira («cazar») en la tarjeta del catálogo */
 
 /* ── vista lista ────────────────────────────────────────────
    Las tarjetas sirven para explorar; la lista para comparar. Una sola

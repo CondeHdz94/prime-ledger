@@ -78,7 +78,7 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
   const e = uiStatus(st);
   const step = nextStep(row, progress);
   return (
-    /* La estrella va fuera del botón de la tarjeta: un <button> dentro de otro
+    /* La mira va fuera del botón de la tarjeta: un <button> dentro de otro
        <button> es HTML inválido y rompe el teclado. */
     <div
       className={`pcard-wrap rise ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''} ${e === 'mastered' ? 'is-mastered' : ''}`}

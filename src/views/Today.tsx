@@ -298,7 +298,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                     </>
                   ) : h.status === 'built' ? (
                     <>
-                      <Icon name="star" size={14} width={1.8} color="var(--teal)" />
+                      <Icon name="up" size={14} width={1.8} color="var(--teal)" />
                       <span>
                         Construido — súbelo a rango máximo para reclamar{' '}
                         <b className="n">{h.xp ? fmt(h.xp) : '—'} XP</b>.
@@ -383,10 +383,10 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
         </section>
       ) : (
         <div className="hunt-hint">
-          <Icon name="star" size={14} width={1.6} />
+          <Icon name="target" size={14} width={1.6} />
           <span>
-            ¿Andas detrás de algo puntual? Dale a la estrella en cualquier prime y aparecerá aquí arriba con la ruta
-            completa para conseguirlo.
+            ¿Andas detrás de algo puntual? Pon cualquier prime en la mira (el botón con la mira) y aparecerá aquí con
+            la ruta completa para conseguirlo.
           </span>
         </div>
       )}
