@@ -16,7 +16,10 @@ const PATHS = {
   plus: 'M12 5v14M5 12h14',
   minus: 'M5 12h14',
   close: 'M6 6l12 12M18 6 6 18',
-  hammer: 'M14.5 3.5 20.5 9.5 9 21H3.5v-5.5z M12 6l6 6',
+  /* martillo de verdad: cabeza maciza arriba-derecha y mango en diagonal —
+     el path anterior era una copia del glifo-espada de Melee y leía como lápiz */
+  hammer:
+    'M15 12 6.6 20.4a1.7 1.7 0 1 1-3-3L12 9 M21.5 11.5 19.6 9.6A2 2 0 0 1 19 8.2V7l-2.3-2.3a6 6 0 0 0-4.2-1.7L9 3l.9.8A6.2 6.2 0 0 1 12 8.4V10l2 2h1.2a2 2 0 0 1 1.4.6l1.9 1.9 3-3Z',
   star: 'm12 3 2.7 5.9 6.3.7-4.7 4.3 1.3 6.4L12 17l-5.6 3.3 1.3-6.4L3 9.6l6.3-.7z',
   note: 'M5 4h14v16l-4-3H5Z M9 9h6M9 13h4',
   down: 'M12 4v13m0 0-5-5m5 5 5-5 M4 20h16',

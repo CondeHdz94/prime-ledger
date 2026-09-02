@@ -238,7 +238,7 @@ export function Mastery() {
                   return (
                     <button
                       key={item.name}
-                      className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''}`}
+                      className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''} ${keep.length > 0 ? 'is-keep' : ''}`}
                       onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
                       title={[base, ...notes].join(' · ')}
                       aria-pressed={on}
@@ -248,7 +248,7 @@ export function Mastery() {
                         {item.name}
                         {item.founders ? ' ✦' : ''}
                       </span>
-                      {keep.length > 0 && <Icon name="hammer" size={11} width={1.8} className="mi-keep" />}
+                      {keep.length > 0 && <Icon name="hammer" size={13} width={1.9} className="mi-keep" />}
                       <span className="mi-xp n">
                         {item.cap > 30 ? `R${item.cap} ` : ''}
                         {(item.xp / 1000).toFixed(0)}k
