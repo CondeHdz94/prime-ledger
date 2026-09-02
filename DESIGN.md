@@ -80,9 +80,8 @@ Escala: seis tokens y nada por debajo de 12 px.
 | `--fs-xl` | 17 | título de sección (`.sect-t`): tiene que leerse por encima de las filas |
 | `--fs-2xl` | 20 | cifra destacada |
 
-Fuera de la escala, a propósito, los seis tamaños-héroe: 25 (`.dw-h h2` y
-`.next-t`, la recomendación de Hoy), 30 (`.dw-count b`, `.mini b`), 38 y 46
-(`.goal-v b`). Un tamaño nuevo se elige de
+Fuera de la escala, a propósito, las cinco cifras-héroe: 25 (`.dw-h h2`), 30
+(`.dw-count b`, `.mini b`), 38 y 46 (`.goal-v b`). Un tamaño nuevo se elige de
 la tabla; si ninguno sirve, la pregunta es si el elemento está bien diseñado.
 
 Antes de esto había 20 tamaños distintos en 102 declaraciones, 46 de ellas con
@@ -166,7 +165,8 @@ antes de meter un `<svg>` suelto en una vista.
    el criterio, y el pie tenía que explicarlo; la etiqueta `.sect-effort` lo
    dice sola. «Tu próxima sesión» va tras las metas y los objetivos —
    primero dónde estás, luego qué persigues, y entonces qué hacer — como cabeza
-   de la escalera; las secciones son el detalle y nacen plegadas.
+   de la escalera, con la misma cabecera que las demás secciones. En escritorio
+   nacen abiertas las de consulta diaria; «sube de rango» y el desglose, plegadas.
 
 ## Deuda conocida
 

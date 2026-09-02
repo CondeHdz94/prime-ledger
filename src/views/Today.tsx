@@ -34,23 +34,30 @@ function countdown(ms: number): string {
 }
 
 /* ── secciones plegables ──────────────────────────────────────
-   Plegadas por defecto: la respuesta va arriba en «Tu próxima sesión» y las
-   secciones son el detalle, con su conteo visible en la cabecera. Lo que
-   abras se queda abierto entre visitas — preferencia desechable, como los
-   filtros de Primes. */
-type SectId = 'targets' | 'open' | 'farm' | 'build' | 'level' | 'xp';
-const SECTS: SectId[] = ['targets', 'open', 'farm', 'build', 'level', 'xp'];
+   Cada sección se pliega a su cabecera con el conteo. Lo que abras o cierres
+   se queda entre visitas — preferencia desechable, como los filtros de
+   Primes. */
+type SectId = 'next' | 'targets' | 'open' | 'farm' | 'build' | 'level' | 'xp';
+const SECTS: SectId[] = ['next', 'targets', 'open', 'farm', 'build', 'level', 'xp'];
 const LS_SECTS = 'prime-tracker:hoy-open';
+/** Sin preferencia guardada: en escritorio abiertas las que se consultan a
+ *  diario; «sube de rango» (12 filas que ya viven en Maestría) y el desglose,
+ *  plegadas. En móvil casi todo plegado — ahí manda el largo del scroll. */
+const defaultOpen = (): SectId[] =>
+  typeof matchMedia === 'function' && matchMedia('(min-width: 860px)').matches
+    ? ['next', 'targets', 'open', 'farm', 'build']
+    : ['next', 'targets'];
 const SECT_OF: Record<SessionKind, SectId> = { open: 'open', farm: 'farm', build: 'build', level: 'level' };
 const ICON_OF: Record<SessionKind, IconName> = { open: 'relic', farm: 'arrow', build: 'hammer', level: 'up' };
 
 function loadOpenSects(): Set<SectId> {
   try {
     const raw = localStorage.getItem(LS_SECTS);
-    const arr = raw ? (JSON.parse(raw) as unknown) : [];
-    return new Set(Array.isArray(arr) ? (arr.filter((x) => SECTS.includes(x as SectId)) as SectId[]) : []);
+    if (!raw) return new Set(defaultOpen());
+    const arr = JSON.parse(raw) as unknown;
+    return new Set(Array.isArray(arr) ? (arr.filter((x) => SECTS.includes(x as SectId)) as SectId[]) : defaultOpen());
   } catch {
-    return new Set();
+    return new Set(defaultOpen());
   }
 }
 
@@ -388,10 +395,17 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
           Va tras el estado (metas) y los objetivos: primero dónde estás, luego
           qué persigues, y entonces qué hacer — cabeza de la escalera. ── */}
       {session && (
-        <section className="card card--tick next rise">
-          <div className="next-h">
-            <span className="k">Tu próxima sesión</span>
-            <span className="badge badge--mastered">{session.primary.effort}</span>
+        <section id="sect-next" className={`card sect next rise ${isOpen('next') ? '' : 'is-collapsed'}`}>
+          <div className="sect-h sect-h--fold" onClick={onHead('next')}>
+            {fold('next')}
+            <span className="sect-effort">ahora</span>
+            <div>
+              <div className="sect-t">Tu próxima sesión</div>
+              <div className="sect-s">la escalera resuelta: qué hacer con la próxima media hora, y por qué</div>
+            </div>
+            <div className="sect-r">
+              <span className="badge badge--mastered">{session.primary.effort}</span>
+            </div>
           </div>
           <h2 className="next-t">{session.primary.title}</h2>
           <p className="next-why">
