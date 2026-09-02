@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, openableRelics, sourceLabel, tally } from '../lib/selectors';
+import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, sourceLabel, tally } from '../lib/selectors';
+import type { SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
+import type { IconName } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { SyncButton } from '../components/SyncButton';
 import { TargetStar } from '../components/TargetStar';
@@ -31,10 +33,62 @@ function countdown(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+/* ── secciones plegables ──────────────────────────────────────
+   Plegadas por defecto: la respuesta va arriba en «Tu próxima sesión» y las
+   secciones son el detalle, con su conteo visible en la cabecera. Lo que
+   abras se queda abierto entre visitas — preferencia desechable, como los
+   filtros de Primes. */
+type SectId = 'targets' | 'open' | 'farm' | 'build' | 'level' | 'xp';
+const SECTS: SectId[] = ['targets', 'open', 'farm', 'build', 'level', 'xp'];
+const LS_SECTS = 'prime-tracker:hoy-open';
+const SECT_OF: Record<SessionKind, SectId> = { open: 'open', farm: 'farm', build: 'build', level: 'level' };
+const ICON_OF: Record<SessionKind, IconName> = { open: 'relic', farm: 'arrow', build: 'hammer', level: 'up' };
+
+function loadOpenSects(): Set<SectId> {
+  try {
+    const raw = localStorage.getItem(LS_SECTS);
+    const arr = raw ? (JSON.parse(raw) as unknown) : [];
+    return new Set(Array.isArray(arr) ? (arr.filter((x) => SECTS.includes(x as SectId)) as SectId[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
 export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) {
   const { progress, dispatch } = useStore();
   const [farmMode, setFarmMode] = useState<'mission' | 'part'>('mission');
   const [openMission, setOpenMission] = useState<string | null>(null);
+  const [openSects, setOpenSects] = useState<Set<SectId>>(loadOpenSects);
+  const isOpen = (id: SectId) => openSects.has(id);
+  const setSect = (id: SectId, open: boolean) => {
+    setOpenSects((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(id);
+      else next.delete(id);
+      try {
+        localStorage.setItem(LS_SECTS, JSON.stringify([...next]));
+      } catch {
+        /* preferencia desechable */
+      }
+      return next;
+    });
+  };
+  const toggleSect = (id: SectId) => setSect(id, !isOpen(id));
+  /** desde la recomendación: abre la sección y lleva hasta ella */
+  const goSect = (id: SectId) => {
+    setSect(id, true);
+    requestAnimationFrame(() => document.getElementById(`sect-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  /** cabecera clicable salvo sobre sus propios controles (seg, badges, botones) */
+  const onHead = (id: SectId) => (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.sect-r, button, a')) return;
+    toggleSect(id);
+  };
+  const fold = (id: SectId) => (
+    <button className="sect-x" onClick={() => toggleSect(id)} aria-expanded={isOpen(id)} aria-controls={`sect-${id}`} title={isOpen(id) ? 'Plegar' : 'Desplegar'}>
+      <Icon name="chevron" size={15} width={1.8} />
+    </button>
+  );
 
   const t = useMemo(() => tally(progress), [progress]);
   const openable = useMemo(() => openableRelics(progress), [progress]);
@@ -42,6 +96,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const byPart = useMemo(() => farmTargets(progress).slice(0, 12), [progress]);
   const builds = useMemo(() => buildReady(progress), [progress]);
   const hunts = useMemo(() => huntList(progress), [progress]);
+  const session = useMemo(() => nextSession(progress), [progress]);
   const levelUp = useMemo(() => levelUpQueue(progress), [progress]);
   // Lo que marcas se queda a la vista y tachado, no se desvanece bajo el
   // cursor: si le diste sin querer, un segundo clic lo revierte. Sale del
@@ -106,6 +161,47 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
 
   return (
     <div className="stack">
+      {/* ── tu próxima sesión: la escalera resuelta en una frase ── */}
+      {session && (
+        <section className="card card--tick next rise">
+          <div className="next-h">
+            <span className="k">Tu próxima sesión</span>
+            <span className="badge badge--mastered">{session.primary.effort}</span>
+          </div>
+          <h2 className="next-t">{session.primary.title}</h2>
+          <p className="next-why">
+            {session.primary.forTarget && <b>Sirve a uno de tus objetivos. </b>}
+            {session.primary.why}
+          </p>
+          <div className="next-act">
+            {session.primary.primeName && (
+              <button className="btn btn--sm" onClick={() => onOpenPrime(session.primary.primeName!)}>
+                Ver {session.primary.primeName}
+              </button>
+            )}
+            <button className="btn btn--sm" onClick={() => goSect(SECT_OF[session.primary.kind])}>
+              Ver el detalle
+            </button>
+            <span className="next-v n">{session.primary.value}</span>
+          </div>
+          {session.alternatives.length > 0 && (
+            <div className="alts">
+              <span className="k">O en su lugar</span>
+              {session.alternatives.map((a) => (
+                <button key={a.kind} className="alt" onClick={() => goSect(SECT_OF[a.kind])}>
+                  <Icon name={ICON_OF[a.kind]} size={15} width={1.6} />
+                  <span className="alt-n">
+                    <b>{a.title}</b>
+                    <span>{a.why}</span>
+                  </span>
+                  <span className="alt-v n">{a.value}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ── las dos metas, una por objetivo real ─────────────── */}
       <div className="goals">
         <section className="card card--inlay card--tick goal rise">
@@ -180,8 +276,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
 
       {/* ── 00 · lo que estás buscando ahora ──────────────────── */}
       {hunts.length > 0 ? (
-        <section className="card card--inlay sect rise" style={{ animationDelay: '90ms' }}>
-          <div className="sect-h">
+        <section id="sect-targets" className={`card card--inlay sect rise ${isOpen('targets') ? '' : 'is-collapsed'}`} style={{ animationDelay: '90ms' }}>
+          <div className="sect-h sect-h--fold" onClick={onHead('targets')}>
+            {fold('targets')}
             <span className="sect-effort">tus objetivos</span>
             <div>
               <div className="sect-t">Lo que estás buscando ahora</div>
@@ -329,8 +426,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       )}
 
       {/* ── 01 · abre lo que ya tienes ────────────────────────── */}
-      <section className="card card--inlay sect rise" style={{ animationDelay: '120ms' }}>
-        <div className="sect-h">
+      <section id="sect-open" className={`card card--inlay sect rise ${isOpen('open') ? '' : 'is-collapsed'}`} style={{ animationDelay: '120ms' }}>
+        <div className="sect-h sect-h--fold" onClick={onHead('open')}>
+          {fold('open')}
           <span className="sect-effort">sin farmear</span>
           <div>
             <div className="sect-t">Abre ahora</div>
@@ -403,8 +501,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
 
       <div className="split">
         {/* ── 02 · farmea lo que falta ───────────────────────── */}
-        <section className="card sect rise" style={{ animationDelay: '160ms' }}>
-          <div className="sect-h">
+        <section id="sect-farm" className={`card sect rise ${isOpen('farm') ? '' : 'is-collapsed'}`} style={{ animationDelay: '160ms' }}>
+          <div className="sect-h sect-h--fold" onClick={onHead('farm')}>
+            {fold('farm')}
             <span className="sect-effort">hay que farmear</span>
             <div>
               <div className="sect-t">Farmea reliquias</div>
@@ -535,8 +634,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
         </section>
 
         {/* ── 03 · construye lo que ya se puede ──────────────── */}
-        <section className="card sect rise" style={{ animationDelay: '200ms' }}>
-          <div className="sect-h">
+        <section id="sect-build" className={`card sect rise ${isOpen('build') ? '' : 'is-collapsed'}`} style={{ animationDelay: '200ms' }}>
+          <div className="sect-h sect-h--fold" onClick={onHead('build')}>
+            {fold('build')}
             <span className="sect-effort">en la foundry</span>
             <div>
               <div className="sect-t">Listos para construir</div>
@@ -578,8 +678,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       </div>
 
       {/* ── 04 · sube de rango lo que ya tienes ───────────────── */}
-      <section className="card sect rise" style={{ animationDelay: '220ms' }}>
-        <div className="sect-h">
+      <section id="sect-level" className={`card sect rise ${isOpen('level') ? '' : 'is-collapsed'}`} style={{ animationDelay: '220ms' }}>
+        <div className="sect-h sect-h--fold" onClick={onHead('level')}>
+          {fold('level')}
           <span className="sect-effort">solo jugar</span>
           <div>
             <div className="sect-t">Sube de rango lo que ya tienes</div>
@@ -666,8 +767,9 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       </section>
 
       {/* ── desglose de XP: se conserva del panel anterior ────── */}
-      <section className="card sect rise" style={{ animationDelay: '240ms' }}>
-        <div className="sect-h">
+      <section id="sect-xp" className={`card sect rise ${isOpen('xp') ? '' : 'is-collapsed'}`} style={{ animationDelay: '240ms' }}>
+        <div className="sect-h sect-h--fold" onClick={onHead('xp')}>
+          {fold('xp')}
           <div>
             <div className="sect-t">Desglose de mastery XP</div>
             <div className="sect-s">de dónde sale y de dónde puede salir lo que falta</div>

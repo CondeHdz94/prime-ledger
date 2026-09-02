@@ -80,8 +80,9 @@ Escala: seis tokens y nada por debajo de 12 px.
 | `--fs-xl` | 17 | título de sección (`.sect-t`): tiene que leerse por encima de las filas |
 | `--fs-2xl` | 20 | cifra destacada |
 
-Fuera de la escala, a propósito, las cinco cifras-héroe: 25 (`.dw-h h2`), 30
-(`.dw-count b`, `.mini b`), 38 y 46 (`.goal-v b`). Un tamaño nuevo se elige de
+Fuera de la escala, a propósito, los seis tamaños-héroe: 25 (`.dw-h h2` y
+`.next-t`, la recomendación de Hoy), 30 (`.dw-count b`, `.mini b`), 38 y 46
+(`.goal-v b`). Un tamaño nuevo se elige de
 la tabla; si ninguno sirve, la pregunta es si el elemento está bien diseñado.
 
 Antes de esto había 20 tamaños distintos en 102 declaraciones, 46 de ellas con
@@ -133,7 +134,8 @@ Las clases van por familias con prefijo corto. Dónde vive cada una:
 
 | Prefijo | Reglas CSS | Vista |
 |---|---|---|
-| `sect-` | 5 | el encabezado 00–04, compartido por `Today`, `Mastery`, `History` |
+| `sect-` | 9 | cabecera de sección (`.sect-effort`, `.sect-x` para plegar), compartida por `Today`, `Mastery`, `History` |
+| `next-` / `alt-` | 13 | «Tu próxima sesión» y sus alternativas (`Today`) |
 | `rl-` | 28 | lista/grilla de primes (`Primes`) |
 | `dw-` | 19 | el cajón de detalle (`PrimeDetail`) |
 | `hunt-` | 18 | sección 00, objetivos (`Today`) |
@@ -158,10 +160,12 @@ antes de meter un `<svg>` suelto en una vista.
 3. **Las cifras van en `--d`** (Space Grotesk), con la clase `.n`.
 4. **Toda animación respeta `prefers-reduced-motion`.**
 5. **El foco visible no se toca.**
-6. **Los marcadores 00–04 se quedan.** Varias guías de diseño marcan los
-   marcadores numerados como cliché, y con razón cuando decoran. Aquí el
-   contenido *es* una secuencia — la escalera de esfuerzo, que es la tesis de la
-   app — y ese es justo el caso en que se justifican.
+6. **La escalera de Hoy se etiqueta por esfuerzo, no por número.** El orden
+   (sin farmear → hay que farmear → en la foundry → solo jugar) es la tesis de
+   la app y no se reordena. Los ordinales 00–04 decían que había orden pero no
+   el criterio, y el pie tenía que explicarlo; la etiqueta `.sect-effort` lo
+   dice sola. Arriba de todo va «Tu próxima sesión»: la escalera resuelta en
+   una recomendación; las secciones son el detalle y nacen plegadas.
 
 ## Deuda conocida
 

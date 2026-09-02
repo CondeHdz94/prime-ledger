@@ -1212,3 +1212,54 @@ button.ph-cell:hover svg { opacity: 0.7; }
     inset 0 0 0 1px color-mix(in oklab, var(--mastery) 30%, transparent),
     0 0 9px color-mix(in oklab, var(--mastery) 22%, transparent);
 }
+
+/* ── tu próxima sesión ─────────────────────────────────────── */
+
+.next { padding: var(--pad); border-color: var(--hair); }
+.next-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* la línea más importante de la app: tamaño de cifra-héroe, como el h2 del cajón */
+.next-t { font-family: var(--d); font-size: 25px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; margin-top: 10px; text-wrap: balance; }
+.next-why { margin-top: 7px; color: var(--text-dim); font-size: var(--fs-s); max-width: 72ch; }
+.next-why b { color: var(--gold); font-weight: 600; }
+.next-act { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.next-v { margin-left: auto; color: var(--gold-bright); font-weight: 600; font-size: var(--fs-l); white-space: nowrap; }
+.alts { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 2px; }
+.alts .k { margin-bottom: 6px; }
+.alt {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border-radius: var(--r-s);
+  text-align: left;
+  transition: background 0.14s;
+}
+.alt:hover { background: var(--surface-2); }
+.alt svg { color: var(--text-faint); }
+.alt-n { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.alt-n b { font-size: var(--fs-s); font-weight: 600; }
+.alt-n span { font-size: var(--fs-xs); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alt-v { font-size: var(--fs-s); color: var(--teal); white-space: nowrap; }
+
+/* ── secciones plegables ───────────────────────────────────── */
+
+.sect-h--fold { cursor: pointer; }
+.sect.is-collapsed > :not(.sect-h) { display: none; }
+.sect.is-collapsed .sect-h { margin-bottom: 0; }
+/* el chevrón va al final aunque en el DOM vaya primero (así lo alcanza el
+   teclado antes que los controles de la cabecera) */
+.sect-x { order: 99; display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r-s); color: var(--text-faint); flex: none; margin-left: 4px; }
+.sect-x:hover { color: var(--text); background: var(--surface-2); }
+.sect-x svg { transition: transform 0.16s; }
+.sect:not(.is-collapsed) .sect-x svg { transform: rotate(90deg); }
+
+@media (max-width: 860px) {
+  .next-t { font-size: var(--fs-2xl); }
+  .alt-n span { white-space: normal; }
+}
+/* plegada, la cabecera no muestra controles del contenido (el seg de 02) */
+.sect.is-collapsed .seg { display: none; }
+/* sin .sect-r (desglose) el chevrón se va solo al borde derecho */
+.sect-h--fold:not(:has(.sect-r)) .sect-x { margin-left: auto; }

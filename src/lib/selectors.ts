@@ -1,6 +1,6 @@
 import type { BuildDep, MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
 import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
-import { pendingXp } from './mastery';
+import { fmt, pendingXp } from './mastery';
 
 export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
 
@@ -509,4 +509,120 @@ export function huntList(progress: Progress): Hunt[] {
       a.prime.name.localeCompare(b.prime.name),
   );
   return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Tu próxima sesión — la escalera resuelta en una frase.
+
+   El panel ya calcula los cuatro rankings (abrir, farmear, construir,
+   subir); lo que no hacía era elegir. Aquí se elige: la primera opción de la
+   escalera que tenga algo, salvo que alguna sirva a un prime que estás
+   siguiendo — entonces esa gana, porque nadie caza 161 primes a la vez.
+   ═══════════════════════════════════════════════════════════════ */
+
+export type SessionKind = 'open' | 'farm' | 'build' | 'level';
+
+export interface SessionRec {
+  kind: SessionKind;
+  /** «Abre las 5 Lith P5 que ya tienes» */
+  title: string;
+  /** el porqué, en una línea */
+  why: string;
+  /** costo aproximado y grueso; «~25 min» no es una promesa */
+  effort: string;
+  /** lo que rinde: «+6.000 XP», «4 piezas» */
+  value: string;
+  /** prime al que abrir el cajón, si hay uno claro */
+  primeName?: string;
+  /** sirve a uno de tus objetivos marcados */
+  forTarget: boolean;
+}
+
+export interface Session {
+  primary: SessionRec;
+  alternatives: SessionRec[];
+}
+
+/** «Nidus, Zephyr y Gara» · «Nidus, Zephyr y 4 más» */
+function listNames(names: string[], max = 3): string {
+  if (names.length <= 1) return names.join('');
+  if (names.length <= max) return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+  return `${names.slice(0, max).join(', ')} y ${names.length - max} más`;
+}
+
+export function nextSession(progress: Progress): Session | null {
+  const targets = new Set(Object.keys(progress.targets).filter((k) => progress.targets[k]));
+  const recs: SessionRec[] = [];
+
+  const openable = openableRelics(progress);
+  if (openable.length > 0) {
+    const forT = openable.find((r) => r.yields.some((y) => targets.has(y.prime.name)));
+    const o = forT ?? openable[0];
+    const primes = [...new Set(o.yields.map((y) => y.prime.name))];
+    // «cierra» = a ese prime le falta exactamente esta pieza
+    const closes = [...new Set(
+      o.yields
+        .filter((y) => partsNeeded(y.prime) - ownedParts(y.prime, progress) === 1)
+        .map((y) => y.prime.name),
+    )];
+    const n = o.yields.length;
+    recs.push({
+      kind: 'open',
+      title: `Abre ${o.owned === 1 ? 'la' : `las ${o.owned}`} ${o.relic} que ya tienes`,
+      why:
+        (closes.length > 0 ? `Cierra${closes.length > 1 ? 'n' : ''} ${listNames(closes, 2)} · ` : '') +
+        `${n} pieza${n === 1 ? '' : 's'} pendiente${n === 1 ? '' : 's'} de ${listNames(primes, 2)} — no hay que farmear nada`,
+      effort: `~${Math.min(60, o.owned * 5)} min`,
+      value: `${n} pieza${n === 1 ? '' : 's'} · ${o.bestChance.toFixed(1)}% rad.`,
+      primeName: closes[0] ?? primes[0],
+      forTarget: !!forT,
+    });
+  }
+
+  const missions = farmByMission(progress);
+  if (missions.length > 0) {
+    const forT = missions.find((m) => m.relics.some((r) => r.parts.some((p) => targets.has(p.primeName))));
+    const m = forT ?? missions[0];
+    const where = [m.mode, m.rot ? `Rot ${m.rot}` : ''].filter(Boolean).join(' · ');
+    recs.push({
+      kind: 'farm',
+      title: `Ve a ${m.wheres[0]}`,
+      why: `${where} — te sirven ${m.relics.length} reliquias y cubren ${m.covers} piezas pendientes`,
+      effort: '~20 min',
+      value: `${m.chance.toFixed(1)}% por rotación`,
+      forTarget: !!forT,
+    });
+  }
+
+  const builds = buildReady(progress);
+  if (builds.length > 0) {
+    const xp = builds.reduce((s, b) => s + b.xp, 0);
+    recs.push({
+      kind: 'build',
+      title: `Construye ${listNames(builds.map((b) => b.prime.name))}`,
+      why: 'ya tienes todas las piezas — es maestría esperando en la foundry',
+      effort: 'sin jugar',
+      value: `+${fmt(xp)} XP`,
+      primeName: builds[0].prime.name,
+      forTarget: builds.some((b) => targets.has(b.prime.name)),
+    });
+  }
+
+  const level = levelUpQueue(progress);
+  if (level.length > 0) {
+    const g = level[0];
+    const rank = Math.min(progress.ranks[g.name] ?? 0, g.cap);
+    recs.push({
+      kind: 'level',
+      title: `Sube ${g.name} a rango ${g.cap}`,
+      why: rank > 0 ? `está en tu arsenal en rango ${rank}/${g.cap} — solo hay que jugarlo` : 'está en tu arsenal sin subir — solo hay que jugarlo',
+      effort: '~30 min',
+      value: `+${fmt(pendingXp(g, progress))} XP`,
+      forTarget: false,
+    });
+  }
+
+  if (recs.length === 0) return null;
+  const i = Math.max(0, recs.findIndex((r) => r.forTarget));
+  return { primary: recs[i], alternatives: recs.filter((_, k) => k !== i) };
 }
