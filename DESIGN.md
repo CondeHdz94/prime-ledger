@@ -37,7 +37,7 @@ es semántica, no decorativa. Un color nuevo sin significado nuevo es un error.
 | `--glow` | `oklab(gold 13 %)` | halo de oro | — |
 | `--text` | `#ece8dd` | cuerpo | 16,15 ✓ |
 | `--text-dim` | `#9c988e` | secundario | 6,87 ✓ |
-| `--text-faint` | `#6a675f` | terciario | **3,50 ⚠** |
+| `--text-faint` | `#8b8780` | terciario | 5,53 ✓ |
 | `--teal` | `#58c7c0` | **accionable ya** | 9,74 ✓ |
 | `--blue` | `#8aa8e2` | **listo, sin usar** | 8,27 ✓ |
 | `--red` | `#c8705f` | **vault · fuera de alcance** | 5,59 ✓ |
@@ -45,8 +45,9 @@ es semántica, no decorativa. Un color nuevo sin significado nuevo es un error.
 | `--rare` / `--uncommon` / `--common` | `#e8cd85` / `#b9c4d4` / `#b08d57` | rareza de reliquia | — |
 
 Contraste WCAG 2.1 calculado sobre `--void`; ✓ = pasa AA (≥ 4,5:1) para texto
-normal. Sobre `--surface-2`, el fondo más claro, todos bajan ~9 %: el peor caso
-de cada token está en *Deuda*.
+normal. Sobre `--surface-2`, el fondo más claro, todos bajan ~9 % y siguen
+pasando: el peor es `--text-faint` a 5,04. Antes era `#6a675f` (3,19 en el peor
+caso) y era el único token que fallaba.
 
 **El reparto oro/blanco hielo es deliberado:** el oro es para el XP y el rango
 (la cantidad), el blanco hielo para el estado terminal (masterizado). No los
@@ -68,31 +69,38 @@ o sea, la app es de peso semibold, y el 700 es el énfasis real.
 La clase `.n` marca cifras: van en Space Grotesk porque sus numerales son más
 legibles en tamaños chicos. Úsala para todo número que se lea como dato.
 
-Escala vertical medida (declaraciones de `font-size`):
+Escala: seis tokens y nada por debajo de 12 px.
 
-```
- 9px  ×1        12px  ×12       15px   ×4       30px  ×2
-10px  ×6        12.5px×13       15.5px ×1       38px  ×1
-10.5px×6        13px  ×7        17px   ×1       46px  ×1
-11px  ×14       13.5px×3        19px   ×1
-11.5px×22       14px  ×4        20px   ×1
-                14.5px×1        25px   ×1
-```
+| Token | px | Rol |
+|---|---|---|
+| `--fs-xs` | 12 | etiquetas, badges, meta, pies — **el suelo** |
+| `--fs-s` | 13 | filas, botones, chips |
+| `--fs-m` | 14 | cuerpo |
+| `--fs-l` | 15 | nombre de fila, énfasis en línea |
+| `--fs-xl` | 17 | título de sección (`.sect-t`): tiene que leerse por encima de las filas |
+| `--fs-2xl` | 20 | cifra destacada |
 
-**Son 20 tamaños distintos.** Los cinco cuerpos reales son 11 / 11,5 / 12 /
-12,5 / 13 px (68 de las 102 declaraciones); el resto de escalones son
-afinaciones puntuales. Ver *Deuda*.
+Fuera de la escala, a propósito, las cinco cifras-héroe: 25 (`.dw-h h2`), 30
+(`.dw-count b`, `.mini b`), 38 y 46 (`.goal-v b`). Un tamaño nuevo se elige de
+la tabla; si ninguno sirve, la pregunta es si el elemento está bien diseñado.
+
+Antes de esto había 20 tamaños distintos en 102 declaraciones, 46 de ellas con
+medios píxeles y 49 por debajo de 12 px — el suelo de 10 px caía justo en los
+badges y etiquetas que codifican estado.
 
 ## Forma y espacio
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--r` | 12 px | tarjeta, panel, cajón |
-| `--r-s` | 8 px | fila, chip, botón |
+| `--r` | 12 px | tarjeta, panel, cajón, tiles grandes |
+| `--r-s` | 8 px | fila, chip, botón, tiles de icono (26–38 px) |
+| `--r-xs` | 4 px | badge, check, chip diminuto |
 | `--pad` | 22 px | respiro interno de tarjeta |
 | `--gap` | 18 px | separación entre bloques |
 
-Píldoras: `border-radius: 99px` (11 usos). Círculos: `50 %`.
+Píldoras: `border-radius: 99px`. Círculos: `50 %`. Excepción micro: las pips
+(5 px de alto) y las muestras de leyenda (8 px) llevan 2 px literales — a 4 px
+serían círculos.
 
 **Sombras: cuatro en toda la app**, y tres son `inset`. La única sombra
 proyectada es la del cajón (`0 12px 32px rgba(0,0,0,.5)`), porque de verdad
@@ -157,30 +165,19 @@ antes de meter un `<svg>` suelto en una vista.
 
 ## Deuda conocida
 
-Medida, no opinada. Es la agenda de la próxima revisión de UX/UI:
+Medida, no opinada. Lo que quedaba tras el pase de tipografía y radios
+(escala, suelo de 12 px, `--text-faint` a AA, radios a token — resuelto):
 
-1. **No hay escala tipográfica.** 20 tamaños para cinco vistas, con
-   medios píxeles (10,5 / 11,5 / 12,5 / 13,5 / 14,5 / 15,5) en **46
-   declaraciones**. Consolidar a ~7 escalones alrededor de los anclas reales
-   (11 / 12 / 13 / 15 / 19 / 25 / 38) tocaría mucho CSS pero ningún componente.
-2. **13 valores distintos de `letter-spacing`**, de −0,02 a 0,24 em. Son tres
+1. **13 valores distintos de `letter-spacing`**, de −0,02 a 0,24 em. Son tres
    intenciones (negativo para display, 0,02–0,06 para cuerpo, 0,1–0,24 para
    etiquetas espaciadas) repartidas en trece números.
-3. **Radios fuera de los tokens:** además de `--r` y `--r-s`, hay 2, 3, 4, 5, 6,
-   7, 9, 10, 12 y 14 px a mano. El `12px` literal duplica `--r`.
-4. **`--text-faint` no llega a AA**: 3,19:1 sobre `--surface-2` (3,50 sobre
-   `--void`), en **46 usos**. Y se cruza con los tamaños chicos —
-   `app.css:982` es `.rl-view .n { font-size: 11px; color: var(--text-faint) }`,
-   o sea 11 px a 3,19:1. Pasa AA para texto grande y para UI, no para texto
-   normal. Es el hallazgo de accesibilidad más claro de la app.
-5. **49 declaraciones bajo 12 px**, una a 9 px.
-6. **Siete entradas escalonadas** en `Today`. Un fade-and-slide-up por sección
+2. **Siete entradas escalonadas** en `Today`. Un fade-and-slide-up por sección
    es el default que las guías de diseño señalan como generado; un solo momento
    orquestado rinde más que siete. (`prefers-reduced-motion` ya lo cubre para
    quien lo pide, pero el default lo ve todo el mundo.)
-7. **29 tokens `--*-glow`** en un tema oscuro. Cada uno tiene sentido por
+3. **29 tokens `--*-glow`** en un tema oscuro. Cada uno tiene sentido por
    separado; conviene mirar si el conjunto suma a "oscuro con acentos que
    brillan", que es un patrón muy visto.
-8. **Prefijos opacos:** `rl`, `dw`, `ph`, `rr`, `hs`, `mrx`, `mi` no se
+4. **Prefijos opacos:** `rl`, `dw`, `ph`, `rr`, `hs`, `mrx`, `mi` no se
    entienden sin buscarlos. La tabla de arriba es el mapa que faltaba; renombrar
    es opcional, documentar era obligatorio.
