@@ -66,7 +66,8 @@ body {
 
 ::selection { background: var(--gold); color: var(--void); }
 
-*:focus-visible { outline: 2px solid var(--hair); outline-offset: 2px; }
+/* oro pleno: al 34% el anillo de foco se perdía sobre las superficies */
+*:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 
 /* scrollbars */
 * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -270,7 +271,10 @@ svg { display: block; }
 .badge--built { background: var(--teal-glow); color: var(--teal); }
 .badge--ready { background: var(--blue-glow); color: var(--blue); }
 .badge--partial { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); }
-.badge--missing { color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--line); }
+/* --text-dim, no faint: es el badge más frecuente y con faint quedaba a ~3:1 */
+.badge--missing { color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--line); }
+/* missing + partial fusionados en la pestaña Primes */
+.badge--pending { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); }
 .badge--vault { background: var(--red-glow); color: var(--red); }
 .badge--farm { background: var(--teal-glow); color: var(--teal); }
 

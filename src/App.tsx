@@ -10,6 +10,7 @@ import { SyncStatus } from './components/SyncStatus';
 import { Icon } from './components/Icon';
 import { fmt, mrGoal, totalXp } from './lib/mastery';
 import { DATA, MASTERY_GEAR, PRIMES } from './lib/gameData';
+import { CATALOG } from './lib/primeFilters';
 import './app.css';
 
 type Tab = 'hoy' | 'primes' | 'mastery' | 'history';
@@ -77,7 +78,9 @@ function Shell() {
               Prime <em>Ledger</em>
             </h1>
             <p>
-              catálogo del juego al {DATA.builtAt.slice(0, 10)} · {PRIMES.length} primes · {MASTERY_GEAR.length} equipos
+              {/* CATALOG, no PRIMES: el mismo 167 que muestra la pestaña —
+                  los tres de Founders no cuentan en ningún sitio */}
+              catálogo del juego al {DATA.builtAt.slice(0, 10)} · {CATALOG.length} primes · {MASTERY_GEAR.length} equipos
             </p>
           </div>
         </div>

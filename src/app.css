@@ -288,26 +288,9 @@
 
 /* ── catálogo de primes ────────────────────────────────────── */
 
-/* Barra de filtros: tres grupos multi-select (OR dentro, AND entre grupos) y
-   un grupo vacío no filtra. La etiqueta a la izquierda reemplaza al `.vsep`,
-   que al envolver la fila quedaba huérfano al final de línea. */
-.filterbar { display: flex; flex-direction: column; gap: 10px; }
-.fb-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-.fgroup { display: grid; grid-template-columns: 74px 1fr; align-items: start; gap: 10px; }
-.fg-label {
-  font-family: var(--d);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  padding-top: 11px; /* centra contra la primera fila de chips (min-height 34) */
-}
-.fg-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
-
-/* casilla = "acumula". El `.seg` (excluyente) se reserva para lo que sí lo es. */
-.chip--check { padding-left: 10px; }
+/* casilla = "acumula". El `.seg` (excluyente) se reserva para lo que sí lo es.
+   Vive en las filas del lateral; sin pastillas — el color se reserva a los
+   badges de la tarjeta. */
 .chk {
   width: 13px;
   height: 13px;
@@ -320,20 +303,8 @@
   color: var(--void);
   transition: background 0.16s, border-color 0.16s;
 }
-.chip--check.is-on .chk { background: var(--gold); border-color: var(--gold); }
 .chip:disabled { opacity: 0.36; }
 .chip:disabled:hover { border-color: var(--line); color: var(--text-dim); }
-
-/* el color del chip encendido calza con el badge que verás en la tarjeta */
-.chip--teal.is-on { color: var(--teal); background: var(--teal-glow); border-color: color-mix(in oklab, var(--teal) 34%, transparent); }
-.chip--teal.is-on .chk { background: var(--teal); border-color: var(--teal); }
-.chip--blue.is-on { color: var(--blue); background: var(--blue-glow); border-color: color-mix(in oklab, var(--blue) 34%, transparent); }
-.chip--blue.is-on .chk { background: var(--blue); border-color: var(--blue); }
-.chip--red.is-on { color: var(--red); background: var(--red-glow); border-color: color-mix(in oklab, var(--red) 34%, transparent); }
-.chip--red.is-on .chk { background: var(--red); border-color: var(--red); }
-
-.chip--clear { color: var(--text-faint); }
-.chip--clear:hover { color: var(--red); border-color: color-mix(in oklab, var(--red) 40%, transparent); }
 
 .search { position: relative; width: 250px; flex: none; }
 .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; }
@@ -354,9 +325,10 @@
 .pc-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .pc-ico,
 .pc-art {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  /* 56px: a 42 el arte se leía, a 56 se reconoce por silueta de un barrido */
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   flex: none;
 }
 .pc-ico {
@@ -371,7 +343,7 @@
 .pc-n { min-width: 0; }
 .pc-n b {
   font-family: var(--d);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   display: block;
   white-space: nowrap;
@@ -613,19 +585,11 @@
   .goals { grid-template-columns: 1fr; }
   .goal-v b { font-size: 38px; }
   .search { width: 100%; }
-  .fgroup { grid-template-columns: 1fr; gap: 5px; }
-  .fg-label { padding-top: 0; }
-  /* tres grupos apilados serían seis filas de chips en un móvil: rail con scroll */
-  .fg-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px 2px; }
-  .fg-chips::-webkit-scrollbar { display: none; }
-  .fg-sorts { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; min-height: 0; margin: 0 -16px; padding: 2px 16px; }
-  .fg-sorts::-webkit-scrollbar { display: none; }
   /* la lista se queda en lo esencial: prime, piezas y estado */
-  .plist { --pcols: 20px 1fr 92px 108px; }
+  .plist { --pcols: 32px 1fr 92px 108px; }
   .pr-acq, .ph-acq, .pr-rel, .ph-rel, .pr-xp, .ph-xp { display: none; }
   .phead { margin-left: 26px; }
   .pr-star { width: 22px; height: 22px; }
-  .fb-r { margin-left: 0; width: 100%; }
   .frow { grid-template-columns: 18px 1fr auto; }
   .frow .fcov { display: none; }
   .fdet { padding-left: 20px; }
@@ -742,7 +706,7 @@
    plantilla de columnas para la cabecera y las filas: si se desalinean, se
    desalinean juntas. */
 .plist {
-  --pcols: 22px 1fr 130px 116px 116px 56px 74px;
+  --pcols: 32px 1fr 126px 112px 112px 58px 70px;
   display: flex;
   flex-direction: column;
 }
@@ -771,16 +735,18 @@
   transition: color 0.16s;
 }
 button.ph-cell:hover { color: var(--text); }
-/* la flecha solo se ve en la columna que manda; en las demás es una pista al pasar */
-.ph-cell svg { opacity: 0; transition: opacity 0.16s; }
-button.ph-cell:hover svg { opacity: 0.5; }
+/* flecha plena en la columna que manda; al 35% como pista en las demás */
+.ph-cell svg { opacity: 0.35; transition: opacity 0.16s; }
+button.ph-cell:hover svg { opacity: 0.7; }
 .ph-cell.is-on { color: var(--gold-bright); }
 .ph-cell.is-on svg { opacity: 1; }
 .ph-xp { justify-content: flex-end; }
 
 .prow-wrap { display: flex; align-items: center; gap: 4px; }
 .prow-wrap + .prow-wrap { border-top: 1px solid var(--line-soft); }
-.pr-star { width: 26px; height: 26px; flex: none; opacity: 0.3; }
+/* visible desde el arranque: al 0.3 parecía decoración; alimenta la sección
+   00 de Hoy y nadie descubre lo invisible */
+.pr-star { width: 26px; height: 26px; flex: none; opacity: 0.35; }
 .prow-wrap:hover .pr-star,
 .pr-star:focus-visible,
 .pr-star.is-on { opacity: 1; }
@@ -796,7 +762,7 @@ button.ph-cell:hover svg { opacity: 0.5; }
 .prow-wrap.is-target .pr-n b { color: var(--gold-bright); }
 
 .pr-ico,
-.pr-art { width: 22px; height: 22px; flex: none; }
+.pr-art { width: 32px; height: 32px; flex: none; }
 .pr-art { object-fit: contain; }
 .pr-ico { color: var(--text-faint); display: flex; align-items: center; justify-content: center; }
 .prow:hover .pr-ico { color: var(--gold); }
@@ -820,17 +786,11 @@ button.ph-cell:hover svg { opacity: 0.5; }
 .pr-rel { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .pr-xp { font-size: 11.5px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ── orden en vista tarjetas ────────────────────────────────
-   Las mismas cabeceras de la lista, sacadas como un grupo más de la barra.
-   Un <select> nativo abría el popup del sistema operativo: la única pieza de
-   la página que no se podía estilar y la única que desentonaba. */
-.fb-r { margin-left: auto; display: flex; align-items: center; gap: 9px; }
-.fg-sorts { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; min-height: 34px; min-width: 0; }
-/* área de toque decente sin engordar la fila */
-.sb-cell { padding: 5px 0; }
-
 .pcard-wrap { position: relative; display: flex; }
-.pcard-wrap .pcard { flex: 1; }
+/* min-width 0: sin esto el ancho mínimo lo dicta el contenido, y una línea
+   de siguiente paso larga (nodos tipo "Level 40 - 60 PROFIT-TAKER…") estira
+   la tarjeta fuera de su celda en vez de recortarse con elipsis */
+.pcard-wrap .pcard { flex: 1; min-width: 0; }
 .pc-star {
   position: absolute;
   top: 7px;
@@ -838,7 +798,9 @@ button.ph-cell:hover svg { opacity: 0.5; }
   z-index: 2;
   width: 28px;
   height: 28px;
-  opacity: 0;
+  /* visible al 35% desde el arranque: nacía invisible hasta el hover y
+     alimenta la sección 00 de Hoy — nadie descubre lo invisible */
+  opacity: 0.35;
   transition: opacity 0.16s, color 0.16s, background 0.16s;
 }
 .pcard-wrap:hover .pc-star,
@@ -958,3 +920,248 @@ button.ph-cell:hover svg { opacity: 0.5; }
   padding-left: 2px;
 }
 .syncst.is-warn { color: var(--red); }
+
+/* ── catálogo: lateral de filtros ───────────────────────────
+   El filtro deja de ser una barra de ~230px sobre el contenido y pasa a un
+   lateral fijo de 212px; arriba queda una sola fila (buscador, orden, vista,
+   conteo). El primer prime aparece dentro de los primeros 56px. */
+
+.primes { display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: var(--gap); align-items: start; }
+.primes.rail-closed { grid-template-columns: 44px minmax(0, 1fr); }
+
+.prail {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 2px;
+}
+
+.rl-head { display: flex; align-items: center; justify-content: space-between; }
+.rl-k {
+  font-family: var(--d);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.rl-x { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--text-faint); }
+.rl-x:hover { color: var(--text); background: var(--surface-2); }
+/* el chevron apunta hacia donde colapsa el lateral */
+.rl-x svg { transform: rotate(180deg); }
+.prail.is-drawer .rl-x svg { transform: none; }
+
+.rl-sec { display: flex; flex-direction: column; gap: 1px; }
+.rl-sec + .rl-sec { border-top: 1px solid var(--line-soft); padding-top: 14px; margin-top: 2px; }
+.rl-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 5px; }
+.rl-clear { font-size: 10.5px; color: var(--text-faint); }
+.rl-clear:hover { color: var(--red); }
+
+/* vistas guardadas: presets con nombre, el oro solo en la activa */
+.rl-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  transition: color 0.14s, background 0.14s;
+}
+.rl-view:hover { color: var(--text); background: var(--surface-2); }
+.rl-view.is-on { color: var(--gold-bright); background: var(--glow); }
+.rl-view .n { font-size: 11px; color: var(--text-faint); }
+.rl-view.is-on .n { color: var(--gold); }
+
+/* filas de casilla + etiqueta + conteo: 13/12.5/11px, sin pastillas */
+.rl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  transition: color 0.14s, background 0.14s;
+}
+.rl-row:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
+.rl-row:disabled { opacity: 0.36; cursor: default; }
+.rl-row .rl-l { flex: 1; text-align: left; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-row .rl-n { font-size: 11px; color: var(--text-faint); }
+.rl-row.is-on { color: var(--text); }
+.rl-row.is-on .chk { background: var(--gold); border-color: var(--gold); }
+
+.rl-more { padding: 5px 8px 5px 29px; font-size: 11.5px; color: var(--text-faint); text-align: left; border-radius: 6px; }
+.rl-more:hover { color: var(--text); background: var(--surface-2); }
+
+/* riel de 44px: solo el conteo de resultados y el de filtros activos */
+.rl-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 44px;
+  padding: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  background: var(--surface);
+  color: var(--text-faint);
+  transition: border-color 0.14s, color 0.14s;
+}
+.rl-mini:hover { border-color: var(--hair); color: var(--text); }
+.rl-mini-n { font-size: 12px; color: var(--text); }
+.rl-mini-act { font-size: 10.5px; color: var(--gold-bright); background: var(--glow); border-radius: 99px; padding: 1px 7px; }
+
+/* ── barra superior de una fila ─────────────────────────────── */
+
+.pbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pbar .search { flex: 1; width: auto; min-width: 160px; }
+.pbar-filters { display: none; }
+.pcount { font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+
+.sortwrap { position: relative; flex: none; }
+.sortmenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-s);
+  padding: 5px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+.sortmenu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.sortmenu button:hover { background: var(--surface-2); color: var(--text); }
+.sortmenu button.is-on { color: var(--gold-bright); }
+
+/* ── tokens: solo cuando el lateral no se ve ────────────────── */
+
+.ptokens { display: none; flex-wrap: wrap; gap: 8px; }
+.primes.rail-closed .ptokens { display: flex; }
+.ptoken {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border: 1px solid var(--hair);
+  border-radius: 99px;
+  font-family: var(--d);
+  font-size: 11.5px;
+  color: var(--gold-bright);
+  background: var(--glow);
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.ptoken:hover { border-color: color-mix(in oklab, var(--red) 40%, transparent); color: var(--red); background: var(--red-glow); }
+
+/* ── tira de "Piezas listas" anclada ────────────────────────── */
+
+.pready {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-color: color-mix(in oklab, var(--blue) 40%, transparent);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.pready svg { color: var(--blue); flex: none; }
+.pready p { flex: 1; min-width: 0; line-height: 1.5; }
+.pready b { color: var(--text); font-weight: 600; }
+.pready .chip { flex: none; }
+
+/* anclado en grilla y lista */
+.pcard-wrap.is-pinned .pcard { border-color: color-mix(in oklab, var(--blue) 40%, transparent); }
+.pin-tag {
+  position: absolute;
+  top: -7px;
+  left: 12px;
+  z-index: 2;
+  font-family: var(--d);
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--void);
+  padding: 0 6px;
+  border-radius: 3px;
+}
+.prow-wrap.is-pinned .prow { box-shadow: inset 2px 0 0 color-mix(in oklab, var(--blue) 40%, transparent); }
+
+/* siguiente paso al pie de la tarjeta */
+.pc-next {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 9px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* sin resultados: decir qué filtro sobra */
+.empty p + p { margin-top: 6px; }
+.empty b { color: var(--text); font-weight: 600; }
+.empty-acts { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+
+/* objetivos táctiles en pantallas de dedo */
+@media (pointer: coarse) {
+  .step button,
+  .star,
+  .pr-star,
+  .pc-star { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 860px) {
+  /* el lateral es un cajón a pantalla completa; los tokens quedan fijos */
+  .primes,
+  .primes.rail-closed { grid-template-columns: 1fr; }
+  .prail { display: none; }
+  .prail.is-drawer {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--void);
+    padding: 20px 16px 40px;
+    max-height: none;
+  }
+  .pbar-filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-s);
+    font-family: var(--d);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .pbar-filters .n { color: var(--gold-bright); }
+  .pbar .search { min-width: 100%; order: 2; }
+  .pbar .search input { min-height: 44px; }
+  .ptokens { display: flex; position: sticky; top: 0; z-index: 10; background: var(--void); padding: 8px 0; }
+  .prow { min-height: 44px; }
+  .pcount { display: none; }
+}
