@@ -1165,3 +1165,24 @@ button.ph-cell:hover svg { opacity: 0.7; }
   .prow { min-height: 44px; }
   .pcount { display: none; }
 }
+
+/* ── masterizado como trofeo ────────────────────────────────
+   El dato ya lo dice el badge; el "se siente logrado" lo pone la tarjeta:
+   el filete superior es la firma de la casa (card--inlay) en el color de
+   maestría, y el badge gana un halo tenue (mismo recurso que .dot--rare). */
+.pcard-wrap.is-mastered .pcard { border-top-color: transparent; }
+.pcard-wrap.is-mastered .pcard::before {
+  content: '';
+  position: absolute;
+  inset: -1px auto auto -1px;
+  width: calc(100% + 2px);
+  height: 1px;
+  border-radius: var(--r) var(--r) 0 0;
+  background: linear-gradient(90deg, transparent, var(--mastery) 12%, var(--mastery) 88%, transparent);
+  opacity: 0.55;
+}
+.badge--mastered {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--mastery) 30%, transparent),
+    0 0 9px color-mix(in oklab, var(--mastery) 22%, transparent);
+}

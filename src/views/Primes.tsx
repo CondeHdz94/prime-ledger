@@ -23,7 +23,7 @@ import {
   toggle,
   uiStatus,
 } from '../lib/primeFilters';
-import type { Group, Opt, PresetId, Row, Sets, SortKey, View } from '../lib/primeFilters';
+import type { EstadoKey, Group, Opt, PresetId, Row, Sets, SortKey, View } from '../lib/primeFilters';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { TargetStar } from '../components/TargetStar';
@@ -52,6 +52,16 @@ function AcqBadge({ row }: { row: Row }) {
   return <span className="badge badge--vault">Vault</span>;
 }
 
+/** Badge de estado: el masterizado lleva el sigil de maestría del juego. */
+function EstadoBadge({ e }: { e: EstadoKey }) {
+  return (
+    <span className={`badge badge--${e}`}>
+      {e === 'mastered' && <Icon name="mastery" size={11} width={2} />}
+      {ESTADO_LABEL[e]}
+    </span>
+  );
+}
+
 function Pips({ owned, total }: { owned: number; total: number }) {
   return (
     <span className="pips" aria-hidden>
@@ -71,7 +81,7 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
     /* La estrella va fuera del botón de la tarjeta: un <button> dentro de otro
        <button> es HTML inválido y rompe el teclado. */
     <div
-      className={`pcard-wrap rise ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''}`}
+      className={`pcard-wrap rise ${progress.targets[p.name] ? 'is-target' : ''} ${pinned ? 'is-pinned' : ''} ${e === 'mastered' ? 'is-mastered' : ''}`}
       style={{ animationDelay: `${Math.min(i, 16) * 16}ms` }}
     >
       {pinned && <i className="pin-tag">Anclado</i>}
@@ -98,7 +108,7 @@ function PrimeCard({ row, i, pinned, onOpen }: { row: Row; i: number; pinned: bo
         )}
 
         <span className="pc-foot">
-          <span className={`badge badge--${e}`}>{ESTADO_LABEL[e]}</span>
+          <EstadoBadge e={e} />
           <AcqBadge row={row} />
         </span>
         {/* title: los nodos largos (bounties de Fortuna/Cetus) se truncan */}
@@ -136,7 +146,7 @@ function PrimeRow({ row, pinned, onOpen }: { row: Row; pinned: boolean; onOpen: 
           )}
         </span>
         <span className="pr-badge pr-status">
-          <span className={`badge badge--${e}`}>{ESTADO_LABEL[e]}</span>
+          <EstadoBadge e={e} />
         </span>
         <span className="pr-badge pr-acq">
           <AcqBadge row={row} />

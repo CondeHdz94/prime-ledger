@@ -32,6 +32,11 @@
   --red: #c8705f;             /* vault · fuera de alcance */
   --red-glow: rgba(200, 112, 95, 0.11);
 
+  /* maestría alcanzada — el blanco hielo del símbolo de maestría del juego;
+     el oro queda para el XP y el rango, este para el estado terminal */
+  --mastery: #e6f3fa;
+  --mastery-glow: rgba(230, 243, 250, 0.1);
+
   /* rareza de reliquia */
   --rare: #e8cd85;
   --uncommon: #b9c4d4;
@@ -267,7 +272,7 @@ svg { display: block; }
   text-transform: uppercase;
   white-space: nowrap;
 }
-.badge--mastered { background: var(--glow); color: var(--gold-bright); }
+.badge--mastered { background: var(--mastery-glow); color: var(--mastery); }
 .badge--built { background: var(--teal-glow); color: var(--teal); }
 .badge--ready { background: var(--blue-glow); color: var(--blue); }
 .badge--partial { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); }

@@ -21,6 +21,8 @@ const PATHS = {
   note: 'M5 4h14v16l-4-3H5Z M9 9h6M9 13h4',
   down: 'M12 4v13m0 0-5-5m5 5 5-5 M4 20h16',
   up: 'M12 20V7m0 0-5 5m5-5 5 5 M4 4h16',
+  /* el sigil de maestría del juego: rombo sobre chevrones ascendentes */
+  mastery: 'M12 2.8 14.4 5.4 12 8 9.6 5.4Z M5 14.2 12 9.6l7 4.6 M5 20 12 15.4 19 20',
 } as const;
 
 const CAT: Record<string, string> = {
