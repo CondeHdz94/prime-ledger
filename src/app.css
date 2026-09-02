@@ -599,7 +599,7 @@
   .goal-v b { font-size: 38px; }
   .search { width: 100%; }
   /* la lista se queda en lo esencial: prime, piezas y estado */
-  .plist { --pcols: 32px 1fr 92px 108px; }
+  .plist { --pcols: 32px 1fr 92px 140px; }
   .pr-acq, .ph-acq, .pr-rel, .ph-rel, .pr-xp, .ph-xp { display: none; }
   .frow { grid-template-columns: 18px 1fr auto; }
   .frow .fcov { display: none; }
@@ -717,7 +717,10 @@
    plantilla de columnas para la cabecera y las filas: si se desalinean, se
    desalinean juntas. */
 .plist {
-  --pcols: 32px 1fr 126px 112px 112px 58px 70px;
+  /* los badges a 12 px («PIEZAS LISTAS» ≈ 135 px con relleno) no cabían en
+     112: las dos columnas de badge van a 140 y el hueco a 16 para que cada
+     celda respire; el nombre es la columna elástica y aguanta */
+  --pcols: 32px 1fr 126px 140px 140px 58px 70px;
   display: flex;
   flex-direction: column;
 }
@@ -726,7 +729,7 @@
   display: grid;
   grid-template-columns: var(--pcols);
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 .phead {
   margin-left: 34px; /* deja sitio a la mira, que vive fuera de la fila */
@@ -762,7 +765,7 @@ button.ph-cell:hover svg { opacity: 0.7; }
 .prow {
   flex: 1;
   min-width: 0;
-  padding: 9px 12px 9px 4px;
+  padding: 11px 12px 11px 4px;
   border-radius: var(--r-s);
   text-align: left;
   transition: background 0.14s;
