@@ -182,7 +182,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       {hunts.length > 0 ? (
         <section className="card card--inlay sect rise" style={{ animationDelay: '90ms' }}>
           <div className="sect-h">
-            <span className="sect-n">00</span>
+            <span className="sect-effort">tus objetivos</span>
             <div>
               <div className="sect-t">Lo que estás buscando ahora</div>
               <div className="sect-s">tus objetivos marcados, con la ruta completa para cada uno</div>
@@ -331,7 +331,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       {/* ── 01 · abre lo que ya tienes ────────────────────────── */}
       <section className="card card--inlay sect rise" style={{ animationDelay: '120ms' }}>
         <div className="sect-h">
-          <span className="sect-n">01</span>
+          <span className="sect-effort">sin farmear</span>
           <div>
             <div className="sect-t">Abre ahora</div>
             <div className="sect-s">reliquias que ya tienes y contienen piezas que te faltan — no hay que farmear nada</div>
@@ -405,7 +405,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
         {/* ── 02 · farmea lo que falta ───────────────────────── */}
         <section className="card sect rise" style={{ animationDelay: '160ms' }}>
           <div className="sect-h">
-            <span className="sect-n">02</span>
+            <span className="sect-effort">hay que farmear</span>
             <div>
               <div className="sect-t">Farmea reliquias</div>
               <div className="sect-s">
@@ -537,7 +537,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
         {/* ── 03 · construye lo que ya se puede ──────────────── */}
         <section className="card sect rise" style={{ animationDelay: '200ms' }}>
           <div className="sect-h">
-            <span className="sect-n">03</span>
+            <span className="sect-effort">en la foundry</span>
             <div>
               <div className="sect-t">Listos para construir</div>
               <div className="sect-s">tienes todas las piezas — cada uno es mastery esperando en la foundry</div>
@@ -580,7 +580,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       {/* ── 04 · sube de rango lo que ya tienes ───────────────── */}
       <section className="card sect rise" style={{ animationDelay: '220ms' }}>
         <div className="sect-h">
-          <span className="sect-n">04</span>
+          <span className="sect-effort">solo jugar</span>
           <div>
             <div className="sect-t">Sube de rango lo que ya tienes</div>
             <div className="sect-s">
@@ -698,8 +698,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       <div className="foot">
         <Icon name="info" size={14} width={1.6} />
         <span>
-          Los porcentajes son por apertura de reliquia radiante. Las tres secciones van en orden de esfuerzo: abrir lo
-          que ya tienes, farmear lo que falta, construir lo que ya se puede.
+          Los porcentajes son por apertura de reliquia radiante.
         </span>
       </div>
     </div>

@@ -106,16 +106,21 @@
 
 .sect { padding: var(--pad); }
 .sect-h { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; flex-wrap: wrap; }
-.sect-n {
+/* Etiqueta de esfuerzo de la sección: dice POR QUÉ va en ese lugar de la
+   escalera («sin farmear» arriba, «hay que farmear» debajo). Antes era un
+   ordinal 00–04: comunicaba que había orden, pero no el criterio, y el pie
+   tenía que explicarlo en texto. */
+.sect-effort {
   font-family: var(--d);
   font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--gold);
   background: var(--glow);
   border-radius: var(--r-xs);
-  padding: 3px 8px;
+  padding: 3px 9px;
   flex: none;
+  white-space: nowrap;
 }
 .sect-t { font-family: var(--d); font-size: var(--fs-xl); font-weight: 600; letter-spacing: 0.02em; }
 .sect-s { font-size: var(--fs-xs); color: var(--text-faint); margin-top: 2px; }
