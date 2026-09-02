@@ -54,6 +54,14 @@ export interface Acquisition {
  *  "farmeable" por mucho que sus reliquias sigan cayendo, y acumular sus
  *  reliquias no debería encenderle el filtro de inventario. */
 export function acquisition(p: Prime, progress: Progress): Acquisition {
+  // Construido o masterizado: al craftearlo las piezas se CONSUMEN, así que
+  // el inventario "ve" piezas faltantes en un prime que ya está en tu
+  // arsenal. Sin este corte contaba como farmeable/tradeable — no hay nada
+  // que conseguir de él.
+  if (progress.built[p.name] || progress.mastered[p.name]) {
+    return { farmableNow: false, hasRelics: false, tradeOnly: false };
+  }
+
   let farmableNow = false;
   let hasRelics = false;
   let pending = false;

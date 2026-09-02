@@ -118,8 +118,9 @@ export const PRESETS: { id: PresetId; label: string; pred: (r: Row, progress: Pr
    * activa hoy O reliquia tuya en inventario — una llave tuya se abre igual
    * aunque el prime esté en el Vault (caso Nami Skyla: todas sus reliquias
    * vaulteadas, pero las tienes). Solo con `farmableNow` la vista era un
-   * alias exacto de la casilla "Farmeable hoy". `acquisition()` ya garantiza
-   * que ambos flags solo encienden con piezas pendientes.
+   * alias exacto de la casilla "Farmeable hoy". `acquisition()` devuelve
+   * todo-false para construidos/masterizados (las piezas consumidas al
+   * craftear parecían "faltantes"), así que ambos flags implican pendiente.
    */
   { id: 'reach', label: 'A mi alcance', pred: (r) => r.acq.farmableNow || r.acq.hasRelics },
   { id: 'oneLeft', label: 'Falta 1 pieza', pred: (r) => r.total - r.owned === 1 && r.st !== 'built' && r.st !== 'mastered' },
