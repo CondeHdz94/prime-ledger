@@ -136,14 +136,15 @@ Las clases van por familias con prefijo corto. Dónde vive cada una:
 | `sect-` | 9 | cabecera de sección (`.sect-effort`, `.sect-x` para plegar), compartida por `Today`, `Mastery`, `History` |
 | `next-` / `alt-` | 13 | «Tu próxima sesión» y sus alternativas (`Today`) |
 | `rl-` | 28 | lista/grilla de primes (`Primes`) |
-| `dw-` | 19 | el cajón de detalle (`PrimeDetail`) |
+| `dw-` | 19 | el cajón de detalle (`PrimeDetail`, `GearDetail`) |
 | `hunt-` | 18 | sección 00, objetivos (`Today`) |
 | `pr-` / `pc-` / `pcard-` / `prow-` / `ph-` | 16 / 15 / 7 / 5 / 8 | tarjeta, fila y cabecera de prime (`Primes`) |
 | `mast-` / `mi-` / `mrow-` / `extra-` | 13 / 4 / 4 / 6 | maestría |
 | `goal-` | 11 | las dos tarjetas de meta (`Today`, `PrimeDetail`) |
 | `hs-` / `rows-` / `mrx-` / `ppill-` | 7 / 3 / 4 / 2 | panel de Hoy |
 | `chip-` / `pbar-` / `pin-` / `search-` | 3 / 1 / 1 / 3 | controles de filtro |
-| `rr-` / `comp-` | 4 / 2 | reliquias y componentes en el cajón |
+| `rr-` / `comp-` | 4 / 3 | reliquias y componentes en el cajón |
+| `gd-` / `res` / `hs-have` / `hstep--gear` | 1 / 5 / 2 / 1 | piezas y recursos de equipo normal (`GearDetail`, sección 00 de `Today`) |
 | `spark-` | 1 | la curva de XP (`History`) |
 
 Iconos: SVG inline en `components/Icon.tsx` — 17 paths (`relic`, `sync`,

@@ -17,7 +17,7 @@ pnpm build:data   # regenera src/data/game-data.json (tras cada parche)
 ## Reglas que no son adivinables
 
 **`src/data/game-data.json` es generado — nunca editarlo a mano.** Sale de
-`scripts/build-data.mjs` (≈950 KB, commiteado a propósito para que el build de
+`scripts/build-data.mjs` (≈1,2 MB, commiteado a propósito para que el build de
 Pages no dependa de la red). Si un dato está mal, se arregla en el script, no en
 el JSON. Para actualizarlo tras un parche, usa la skill `/patch-refresh`.
 
@@ -41,7 +41,12 @@ colisionan). Cambiar esto es una migración, no un refactor.
 **`Progress` tiene versión (`v: 1`).** Añadir un campo obliga a rellenarlo en
 `load()` y en `importJson()` de `store.tsx`: hay guardados viejos en el
 navegador de la gente que no lo traen, y los lectores asumen que existe. Mira
-cómo entraron `relics`, `targets` y `ranks`.
+cómo entraron `relics`, `targets`, `ranks` y `resources`.
+
+**`Progress.resources` vacío significa «no sé», no «cero».** Se llena solo con
+el sync de AlecaFrame. `resourcesKnown()` (`selectors.ts`) guarda la puerta:
+sin sync no se muestra ningún déficit de recursos, porque decirle a alguien que
+le falta Forma para todo sería inventar.
 
 **El XP de maestría se gana por rango, no al llegar al tope.** `earnedXp()`
 cuenta la fracción del rango alcanzado (`Progress.ranks`). Un arma en 15/30 ya
@@ -57,7 +62,10 @@ categoría nueva del catálogo no aparece rota, aparece sin etiqueta o al final.
 - `lib/gameData.ts` — acceso al JSON generado + helpers de catálogo (slugs de
   warframe.market, imágenes del CDN).
 - `lib/selectors.ts` — el corazón: qué puedes hacer hoy. `acquisition`,
-  `openableRelics`, `farmByMission`, `buildReady`, `levelUpQueue`, `huntList`.
+  `openableRelics`, `farmByMission`, `buildReady`, `levelUpQueue`, `huntList`,
+  `gearHunts` (equipo normal en la mira), `resourceGaps` (recursos que faltan).
+- `views/PrimeDetail.tsx` y `views/GearDetail.tsx` — los dos cajones, misma
+  piel (`.drawer`, `.dw-*`, `.comp`). `App.tsx` decide cuál abrir por el nombre.
 - `lib/primeFilters.ts` — ejes de filtro (OR dentro de cada grupo, AND entre
   grupos, **grupo vacío no filtra**), conteos contextuales, vistas guardadas
   como predicados, orden y persistencia de la UI.

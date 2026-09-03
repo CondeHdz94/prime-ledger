@@ -1,5 +1,5 @@
 import raw from '../data/game-data.json';
-import type { GameData, MasteryItem, Prime } from '../types';
+import type { GameData, GearPart, MasteryItem, Prime } from '../types';
 
 export const DATA = raw as unknown as GameData;
 
@@ -51,6 +51,13 @@ export const marketSetSlug = (p: Prime): string | undefined =>
   p.components.length > 0 && !p.founders
     ? `${p.name} Set`.toLowerCase().replace(/ /g, '_').replace(/&/g, 'and')
     : undefined;
+
+/**
+ * Clave en `Progress.parts` de una pieza de equipo normal: «Rhino Chassis».
+ * No choca con las piezas prime, cuyo `fullName` siempre lleva «Prime» en
+ * medio («Rhino Prime Chassis Blueprint»).
+ */
+export const gearPartKey = (item: MasteryItem, part: GearPart) => `${item.name} ${part.name}`;
 
 /** Total parts needed for a prime (sum of component counts). */
 export const partsNeeded = (p: Prime) => p.components.reduce((n, c) => n + c.count, 0);

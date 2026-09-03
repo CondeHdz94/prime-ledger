@@ -109,6 +109,7 @@ function reducer(state: Progress, action: Action): Progress {
         mastered,
         ranks: patch.ranks,
         relics: patch.relics,
+        resources: patch.resources,
         extras: patch.extras,
         history: [
           ...state.history,
@@ -118,7 +119,7 @@ function reducer(state: Progress, action: Action): Progress {
             'sync',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
               `${summary.itemsMastered} ítems masterizados, ${summary.itemsPartial} a medio subir, ` +
-              `${summary.relicCount} reliquias` +
+              `${summary.relicCount} reliquias, ${summary.resourceKinds} recursos` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
           ),
         ],
@@ -142,14 +143,16 @@ function load(): Progress {
     if (!raw) return EMPTY_PROGRESS;
     const parsed = JSON.parse(raw) as Progress;
     if (parsed.v !== 1) return EMPTY_PROGRESS;
-    // `targets` y `relics` llegaron después: un guardado viejo (o un respaldo
-    // editado a mano) no los trae y los lectores asumen que son objetos.
+    // `targets`, `relics`, `ranks` y `resources` llegaron después: un guardado
+    // viejo (o un respaldo editado a mano) no los trae y los lectores asumen
+    // que son objetos.
     return {
       ...EMPTY_PROGRESS,
       ...parsed,
       relics: parsed.relics ?? {},
       targets: parsed.targets ?? {},
       ranks: parsed.ranks ?? {},
+      resources: parsed.resources ?? {},
       extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
     };
   } catch {
@@ -199,6 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             relics: parsed.relics ?? {},
             targets: parsed.targets ?? {},
             ranks: parsed.ranks ?? {},
+            resources: parsed.resources ?? {},
             extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
           },
         });

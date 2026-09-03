@@ -7,7 +7,7 @@
  * Todo ocurre en el navegador: nada sale de tu máquina.
  */
 import type { Extras, Progress, Refinement } from '../types';
-import { DATA, MASTERY_GEAR, PRIMES } from './gameData';
+import { DATA, MASTERY_GEAR, PRIMES, gearPartKey } from './gameData';
 import { EXTRAS_XP } from './mastery';
 
 const KEY = new TextEncoder().encode('LEO-ALEC\tEO-ALEC');
@@ -28,10 +28,15 @@ interface DeInventory {
 }
 
 export interface AlecaImportResult {
-  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics' | 'ranks'> & { extras: Extras };
+  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics' | 'ranks' | 'resources'> & { extras: Extras };
   summary: {
     mrInGame?: number;
+    /** piezas prime sueltas */
     partsFound: number;
+    /** piezas de equipo normal sueltas (blueprints, chassis, cañones…) */
+    gearPartsFound: number;
+    /** recursos distintos con existencias */
+    resourceKinds: number;
     primesBuilt: number;
     /** ítems masterizables que ya están en tu arsenal */
     gearOwned: number;
@@ -85,29 +90,52 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
     }
   }
 
-  // Piezas prime ------------------------------------------------------------
+  // Piezas -------------------------------------------------------------------
+  // El blueprint de una parte de warframe vive en Recipes con sufijo
+  // "Blueprint"; la parte ya construida vive en MiscItems como "Component".
+  // Set: si `un` no termina en Component/Blueprint los tres replace devuelven
+  // la misma cadena, y sumarlas contaba la misma pieza 2-3 veces.
+  const pieceCount = (un: string) => {
+    const variants = new Set([un, un.replace(/Component$/, 'Blueprint'), un.replace(/Blueprint$/, 'Component')]);
+    let total = 0;
+    for (const v of variants) total += counts.get(v) ?? 0;
+    return total;
+  };
   const parts: Record<string, number> = {};
   let partsFound = 0;
   for (const p of PRIMES) {
     for (const c of p.components) {
       if (!c.un) continue;
-      // El blueprint de una parte de warframe vive en Recipes con sufijo
-      // "Blueprint"; la parte ya construida vive en MiscItems como "Component".
-      // Set: si `un` no termina en Component/Blueprint los tres replace devuelven
-      // la misma cadena, y sumarlas contaba la misma pieza 2-3 veces.
-      const variants = new Set([
-        c.un,
-        c.un.replace(/Component$/, 'Blueprint'),
-        c.un.replace(/Blueprint$/, 'Component'),
-      ]);
-      let total = 0;
-      for (const v of variants) total += counts.get(v) ?? 0;
-      const owned = Math.min(c.count, total);
+      const owned = Math.min(c.count, pieceCount(c.un));
       if (owned > 0) {
         parts[c.fullName] = owned;
         partsFound += owned;
       }
     }
+  }
+  // Las piezas de equipo normal siguen la misma convención de uniqueName, así
+  // que el mismo truco las cuenta; solo cambia la clave.
+  let gearPartsFound = 0;
+  for (const g of MASTERY_GEAR) {
+    for (const part of g.parts ?? []) {
+      if (!part.un) continue;
+      const owned = Math.min(part.count, pieceCount(part.un));
+      if (owned > 0) {
+        parts[gearPartKey(g, part)] = owned;
+        gearPartsFound += owned;
+      }
+    }
+  }
+
+  // Recursos -----------------------------------------------------------------
+  // Solo MiscItems: ahí vive la Forma construida; su blueprint está en Recipes
+  // y no sirve para craftear nada, así que no debe sumar.
+  const misc = new Map<string, number>();
+  for (const it of inv.MiscItems ?? []) misc.set(it.ItemType, (misc.get(it.ItemType) ?? 0) + (it.ItemCount ?? 1));
+  const resources: Record<string, number> = {};
+  for (const [name, un] of Object.entries(DATA.resourceIndex)) {
+    const n = misc.get(un);
+    if (n) resources[name] = n;
   }
 
   // Lo que tienes en el arsenal ---------------------------------------------
@@ -211,10 +239,12 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   };
 
   return {
-    patch: { parts, built, mastered, ranks, relics, extras },
+    patch: { parts, built, mastered, ranks, relics, resources, extras },
     summary: {
       mrInGame: inv.PlayerLevel,
       partsFound,
+      gearPartsFound,
+      resourceKinds: Object.keys(resources).length,
       primesBuilt,
       gearOwned,
       itemsMastered,

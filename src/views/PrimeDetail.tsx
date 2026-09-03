@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Prime, PrimeComponent, Refinement, RelicRef } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, marketSetSlug, marketUrl, partsNeeded, relicSources } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { depLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, sourceLabel, STATUS_LABEL } from '../lib/selectors';
+import { PERISHABLE, depLabel, gapLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, resourceGaps, resourcesKnown, sourceLabel, STATUS_LABEL } from '../lib/selectors';
 import { fmt } from '../lib/mastery';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
@@ -114,6 +114,9 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   // dependencias de crafteo: este prime se consume en otro, o consume a otro
   const keep = pendingConsumers(gearItem, progress);
   const needs = gearItem?.needs ?? [];
+  // recursos del crafteo: solo importan mientras no esté construido
+  const resources = !progress.built[prime.name] && !progress.mastered[prime.name] ? gearItem?.resources ?? [] : [];
+  const gaps = resourceGaps(gearItem, progress);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -251,6 +254,21 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
                     : needs.every((n) => progress.built[n.name] || progress.mastered[n.name])
                       ? ` — ${needs.length > 1 ? 'los' : 'lo'} masterizaste, pero confirma que no ${needs.length > 1 ? 'los' : 'lo'} vendiste.`
                       : ` — tendrás que conseguir${needs.length > 1 ? 'los' : 'lo'} primero.`}
+                </span>
+              </div>
+            )}
+
+            {resources.length > 0 && (
+              <div className="goal-note">
+                <Icon name="hammer" size={15} width={1.7} color={gaps.length > 0 ? undefined : 'var(--gold)'} />
+                <span>
+                  Craftearlo pide <b>{resources.map((r) => `${fmt(r.count)} ${r.name}`).join(', ')}</b>
+                  {!resourcesKnown(progress)
+                    ? '.'
+                    : gaps.length === 0
+                      ? ' — según tu último sync los tienes.'
+                      : ` — te faltan ${gapLabel(gaps)}.`}
+                  {gaps.some((g) => PERISHABLE.has(g.name)) && ' El Argon se pudre en 24 h: fármalo cuando tengas el resto.'}
                 </span>
               </div>
             )}

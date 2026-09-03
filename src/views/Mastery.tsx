@@ -30,11 +30,12 @@ interface CatBucket {
   pending: number;
 }
 
-export function Mastery() {
+export function Mastery({ onOpen }: { onOpen: (name: string) => void }) {
   const { progress, dispatch } = useStore();
   const [q, setQ] = useState('');
   const [onlyPending, setOnlyPending] = useState(false);
   const [onlyOwned, setOnlyOwned] = useState(false);
+  const [onlyTargets, setOnlyTargets] = useState(false);
 
   const buckets = useMemo<CatBucket[]>(() => {
     const needle = q.trim().toLowerCase();
@@ -45,11 +46,18 @@ export function Mastery() {
       // "no lo tengo" y "lo tengo sin subir" son situaciones muy distintas:
       // una pide conseguir el arma, la otra solo jugarla un rato.
       if (onlyOwned && !progress.built[item.name]) continue;
+      if (onlyTargets && !progress.targets[item.name]) continue;
       if (!map.has(item.category)) map.set(item.category, []);
       map.get(item.category)!.push(item);
     }
     const out: CatBucket[] = [];
+    // Dentro de la categoría, lo que responde «¿qué hago con esto?» arriba:
+    // lo que tienes sin subir, luego lo que está en la mira, y el resto por
+    // nombre. Alfabético puro escondía un arma a 12/30 entre 235 melees.
+    const weight = (i: MasteryItem) =>
+      progress.built[i.name] && !progress.mastered[i.name] ? 0 : progress.targets[i.name] && !progress.mastered[i.name] ? 1 : 2;
     for (const [cat, items] of map) {
+      items.sort((a, b) => weight(a) - weight(b) || a.name.localeCompare(b.name));
       let done = 0;
       let pending = 0;
       for (const i of items) {
@@ -62,7 +70,7 @@ export function Mastery() {
     // así la categoría que más te acerca a MR 30 queda arriba.
     out.sort((a, b) => b.pending - a.pending || CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat));
     return out;
-  }, [q, onlyPending, onlyOwned, progress.mastered, progress.built]);
+  }, [q, onlyPending, onlyOwned, onlyTargets, progress.mastered, progress.built, progress.targets]);
 
   const xp = totalXp(progress);
   const { mr, goal, toGoal, pct, chasingMr30 } = mrGoal(xp);
@@ -197,6 +205,14 @@ export function Mastery() {
             >
               Solo lo que tengo
             </button>
+            <button
+              className={`chip ${onlyTargets ? 'is-on' : ''}`}
+              onClick={() => setOnlyTargets(!onlyTargets)}
+              aria-pressed={onlyTargets}
+              title="Lo que pusiste en la mira"
+            >
+              Solo en la mira
+            </button>
           </div>
         </div>
 
@@ -233,28 +249,36 @@ export function Mastery() {
                     keep.length > 0 ? `⚠ NO VENDER: se consume al construir ${depLabel(keep)}` : '',
                     item.needs?.length ? `construirlo gasta ${depLabel(item.needs)}` : '',
                   ].filter(Boolean);
+                  const rank = Math.min(progress.ranks[item.name] ?? 0, item.cap);
                   const base = owned
-                    ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
+                    ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${rank}/${item.cap})`
                     : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`;
                   return (
-                    // La mira va fuera del botón (un botón no puede contener otro)
-                    // y solo en lo pendiente: lo masterizado ya no se persigue.
-                    <div key={item.name} className={`mast-row ${progress.targets[item.name] ? 'is-target' : ''}`}>
+                    // Tres controles por fila, cada uno un botón propio (un botón
+                    // no puede contener otro): la casilla marca masterizado, el
+                    // nombre abre el cajón, la mira solo en lo pendiente.
+                    <div
+                      key={item.name}
+                      className={`mast-row ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''} ${keep.length > 0 ? 'is-keep' : ''} ${progress.targets[item.name] ? 'is-target' : ''}`}
+                    >
                       <button
-                        className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''} ${keep.length > 0 ? 'is-keep' : ''}`}
+                        className="mi-check"
                         onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
-                        title={[base, ...notes].join(' · ')}
                         aria-pressed={on}
+                        aria-label={on ? `Desmarcar ${item.name}` : `Marcar ${item.name} como masterizado`}
+                        title={on ? 'Desmarcar masterizado' : 'Marcar masterizado'}
                       >
-                        <span className="mi-check">{on && <Icon name="check" size={9} width={3} />}</span>
+                        {on && <Icon name="check" size={9} width={3} />}
+                      </button>
+                      <button className="mast-item" onClick={() => onOpen(item.name)} title={[base, ...notes].join(' · ')}>
                         <span className="mi-name">
                           {item.name}
                           {item.founders ? ' ✦' : ''}
                         </span>
                         {keep.length > 0 && <Icon name="hammer" size={13} width={1.9} className="mi-keep" />}
+                        {/* lo tuyo sin subir muestra el rango: es lo que decide si vale la pena */}
                         <span className="mi-xp n">
-                          {item.cap > 30 ? `R${item.cap} ` : ''}
-                          {(item.xp / 1000).toFixed(0)}k
+                          {owned ? `${rank}/${item.cap}` : `${item.cap > 30 ? `R${item.cap} ` : ''}${(item.xp / 1000).toFixed(0)}k`}
                         </span>
                       </button>
                       {!on && !item.founders && <TargetStar name={item.name} size={13} className="mi-star" />}
@@ -274,9 +298,10 @@ export function Mastery() {
           {chasingMr30
             ? `Cada rango cuesta 2.500 × rango²; MR 30 son ${fmt(MR30_XP)}.`
             : 'Pasado MR 30 cada rango legendario cuesta 147.500 XP fijos.'}{' '}
-          Los ítems con ✦ son de Founders y no cuentan como alcanzables. El martillo marca un arma que otro
-          crafteo pendiente consume como ingrediente: no la vendas hasta construirlo (detalle en el tooltip). La mira
-          pone el ítem entre tus objetivos: sale en Hoy y manda en «Tu próxima sesión».
+          La casilla marca masterizado a mano; el nombre abre el detalle con piezas, fuentes y recursos. En teal, el
+          rango de lo que tienes sin subir. Los ítems con ✦ son de Founders y no cuentan como alcanzables. El martillo
+          marca un arma que otro crafteo pendiente consume como ingrediente: no la vendas hasta construirlo. La mira pone
+          el ítem entre tus objetivos: sale en Hoy y manda en «Tu próxima sesión».
         </span>
       </div>
     </div>

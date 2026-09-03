@@ -225,6 +225,79 @@ console.log(
   masteryGear.filter((g) => g.needs).length, 'consumidores',
 );
 
+// ---------------------------------------------------------------- piezas, recursos y adquisición
+// Lo que hace falta para craftear cada ítem, en dos listas distintas porque
+// se tratan distinto:
+//  - `parts`: blueprint y partes con nombre (Chassis, Barrel…) — se rastrean
+//    una a una desde el inventario, igual que las piezas prime. Solo para
+//    no-prime: las de los primes ya viven en `primes[].components`.
+//  - `resources`: Alloy Plate, Forma, Orokin Cell… — solo interesan como
+//    déficit («te faltan 7 Fieldron»), así que van por nombre y cantidad y el
+//    uniqueName sale a `resourceIndex`, una vez por recurso y no 1.500 veces.
+// Un ingrediente masterizable (Bolto → Akbolto) ya está en `needs` y no se
+// repite aquí. La clase se decide por el uniqueName: todo lo que cuelga de
+// /Lotus/Types/Recipes/ es pieza, y «Blueprint» lo es aunque viva bajo
+// /Lotus/Weapons/ (ClanTech, Ostron, SolarisUnited).
+//
+// La adquisición del blueprint va tal como la trae el catálogo, sin
+// interpretarla: `credits` es lo que cuesta el blueprint (mercado o dojo, el
+// dato no distingue — Tenora y Karyst traen el mismo campo y uno es Tenno Lab),
+// `plat` el precio del arma hecha en el mercado, `drops` de dónde cae el
+// ítem entero cuando no tiene blueprint (Kuva/Tenet, algunos de sindicato).
+const isPartUn = (un) => /^\/Lotus\/Types\/Recipes\//.test(un ?? '');
+const topDrops = (drops) => {
+  const seen = new Set();
+  const out = [];
+  for (const d of [...(drops ?? [])].sort((a, b) => b.chance - a.chance)) {
+    if (!d.location || seen.has(d.location)) continue;
+    seen.add(d.location);
+    out.push({ where: d.location, chance: d.chance });
+    if (out.length >= 3) break;
+  }
+  return out.length ? out : undefined;
+};
+const resourceIndex = {};
+let withParts = 0;
+let withResources = 0;
+for (const item of gear) {
+  if (!item.masterable) continue;
+  const g = gearByName.get(item.name);
+  if (!g) continue;
+  const parts = [];
+  const resources = [];
+  for (const comp of item.components ?? []) {
+    if (gearByUn.has(comp.uniqueName)) continue; // ingrediente masterizable: ya está en `needs`
+    const count = comp.itemCount ?? 1;
+    if (comp.name === 'Blueprint' || isPartUn(comp.uniqueName)) {
+      if (item.isPrime) continue; // las piezas prime ya están en primes[].components
+      parts.push({ name: comp.name, un: comp.uniqueName, count, drops: topDrops(comp.drops) });
+    } else {
+      resources.push({ name: comp.name, count });
+      if (comp.uniqueName) resourceIndex[comp.name] ??= comp.uniqueName;
+    }
+  }
+  if (parts.length) {
+    // blueprint primero, luego las partes por nombre: es el orden en que se consiguen
+    parts.sort((a, b) => Number(b.name === 'Blueprint') - Number(a.name === 'Blueprint') || a.name.localeCompare(b.name));
+    g.parts = parts;
+    withParts++;
+  }
+  if (resources.length) {
+    resources.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    g.resources = resources;
+    withResources++;
+  }
+  if (item.masteryReq) g.mr = item.masteryReq;
+  if (item.marketCost) g.plat = item.marketCost;
+  if (item.bpCost) g.credits = item.bpCost;
+  const drops = topDrops(item.drops);
+  if (drops) g.drops = drops;
+}
+console.log(
+  'crafteo:', withParts, 'ítems con piezas,', withResources, 'con recursos,',
+  Object.keys(resourceIndex).length, 'recursos distintos',
+);
+
 // ---------------------------------------------------------------- relic index
 // uniqueName (sin prefijo) -> "Lith S1 Intact" — para leer el inventario de
 // reliquias importado de AlecaFrame (MiscItems /Lotus/Types/Game/Projections/…)
@@ -250,6 +323,7 @@ const out = {
   masteryGear,
   starChartNodes,
   relicIndex,
+  resourceIndex,
 };
 writeFileSync(OUT, JSON.stringify(out));
 console.log(`OK ${primes.length} primes | ${relicSources.size} active relics | ${masteryGear.length} masterable items`);

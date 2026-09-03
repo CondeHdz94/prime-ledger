@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { buildReady, farmByMission, farmTargets, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, sourceLabel, tally } from '../lib/selectors';
+import { aggregateGaps, buildReady, farmByMission, farmTargets, gapLabel, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, resourceGaps, sourceLabel, tally } from '../lib/selectors';
 import type { SessionFocus, SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
@@ -73,7 +73,7 @@ function loadOpenSects(): Set<SectId> {
   }
 }
 
-export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) {
+export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
   const { progress, dispatch } = useStore();
   const [farmMode, setFarmMode] = useState<'mission' | 'part'>('mission');
   const [openMission, setOpenMission] = useState<string | null>(null);
@@ -125,6 +125,19 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const builds = useMemo(() => buildReady(progress), [progress]);
   const hunts = useMemo(() => huntList(progress), [progress]);
   const gear = useMemo(() => gearHunts(progress), [progress]);
+  // Déficit conjunto de recursos para todo lo que está en la mira y aún se
+  // craftea: Forma y Fieldron se farmean por lotes, no por arma.
+  const miraGaps = useMemo(
+    () =>
+      aggregateGaps(
+        [
+          ...hunts.filter((h) => h.status === 'ready' || h.status === 'partial' || h.status === 'missing').map((h) => MASTERY_GEAR.find((g) => g.name === h.prime.name)),
+          ...gear.filter((h) => h.status === 'missing').map((h) => h.item),
+        ].filter((g): g is MasteryItem => !!g),
+        progress,
+      ),
+    [hunts, gear, progress],
+  );
   const session = useMemo(() => nextSession(progress, focus), [progress, focus]);
   const levelUp = useMemo(() => levelUpQueue(progress), [progress]);
   // Lo que marcas se queda a la vista y tachado, no se desvanece bajo el
@@ -281,6 +294,12 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             </div>
             <div className="sect-r">
               <span className="badge badge--mastered">{hunts.length + gear.length} en la mira</span>
+              {miraGaps.length > 0 && (
+                <span className="badge badge--missing" title={`Recursos que faltan para craftear todo lo que está en la mira: ${gapLabel(miraGaps)}`}>
+                  faltan {gapLabel(miraGaps.slice(0, 3))}
+                  {miraGaps.length > 3 && ` y ${miraGaps.length - 3} más`}
+                </span>
+              )}
             </div>
           </div>
 
@@ -288,7 +307,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             {hunts.map((h) => (
               <article key={h.prime.name} className={`hunt hunt--${h.status}`}>
                 <div className="hunt-h">
-                  <button className="hunt-open" onClick={() => onOpenPrime(h.prime.name)}>
+                  <button className="hunt-open" onClick={() => onOpenItem(h.prime.name)}>
                     <PrimeArt
                       image={h.prime.image}
                       category={h.prime.category}
@@ -334,12 +353,24 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                       </span>
                     </>
                   ) : h.status === 'ready' ? (
-                    <>
-                      <Icon name="hammer" size={14} width={1.8} color="var(--teal)" />
-                      <span>
-                        Tienes las {h.total} piezas — constrúyelo y son <b className="n">{fmt(h.xp)} XP</b>.
-                      </span>
-                    </>
+                    (() => {
+                      const gaps = resourceGaps(MASTERY_GEAR.find((g) => g.name === h.prime.name), progress);
+                      return gaps.length > 0 ? (
+                        <>
+                          <Icon name="alert" size={14} width={1.8} />
+                          <span>
+                            Tienes las {h.total} piezas, pero craftearlo pide <b>{gapLabel(gaps)}</b> que no tienes.
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="hammer" size={14} width={1.8} color="var(--teal)" />
+                          <span>
+                            Tienes las {h.total} piezas — constrúyelo y son <b className="n">{fmt(h.xp)} XP</b>.
+                          </span>
+                        </>
+                      );
+                    })()
                   ) : h.prime.founders ? (
                     <>
                       <Icon name="alert" size={14} width={1.8} color="var(--red)" />
@@ -409,20 +440,24 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
               </article>
             ))}
 
-            {/* Equipo normal en la mira: sin ruta de reliquias (no la hay),
-                pero con lo que sí sabemos — si está en tu arsenal y en qué rango. */}
+            {/* Equipo normal en la mira: la ruta que el catálogo sabe — piezas
+                con fuente, precio del blueprint, recursos que faltan — y si ya
+                está en tu arsenal, solo el rango. */}
             {gear.map((h) => (
-              <article key={h.item.name} className={`hunt hunt--gear ${h.status === 'mastered' ? 'hunt--mastered' : ''}`}>
+              <article key={h.item.name} className={`hunt ${h.status === 'mastered' ? 'hunt--mastered' : ''}`}>
                 <div className="hunt-h">
-                  <span className="hunt-open">
+                  <button className="hunt-open" onClick={() => onOpenItem(h.item.name)}>
                     <span className="hunt-ico">
                       <CatIcon cat={h.item.category} size={20} />
                     </span>
                     <span className="hunt-n">
                       <b>{h.item.name}</b>
-                      <span>{CATEGORY_LABEL[h.item.category] ?? h.item.category} · equipo normal</span>
+                      <span>
+                        {CATEGORY_LABEL[h.item.category] ?? h.item.category} · equipo normal
+                        {h.item.mr ? ` · MR ${h.item.mr}` : ''}
+                      </span>
                     </span>
-                  </span>
+                  </button>
                   <span className="hunt-c n">
                     {h.status === 'levelling' ? `${h.rank}/${h.item.cap}` : h.status === 'mastered' ? `${h.item.cap}/${h.item.cap}` : '—'}
                   </span>
@@ -441,16 +476,68 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                         En tu arsenal en rango {h.rank}/{h.item.cap} — súbelo y son <b className="n">{fmt(h.pending)} XP</b>.
                       </span>
                     </>
+                  ) : h.steps.length === 0 && (h.item.parts?.length ?? 0) > 0 ? (
+                    h.gaps.length > 0 ? (
+                      <>
+                        <Icon name="alert" size={14} width={1.8} />
+                        <span>
+                          Tienes todas las piezas, pero craftearlo pide <b>{gapLabel(h.gaps)}</b> que no tienes.
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="hammer" size={14} width={1.8} color="var(--teal)" />
+                        <span>
+                          Tienes todas las piezas — constrúyelo y son <b className="n">{fmt(h.item.xp)} XP</b>.
+                        </span>
+                      </>
+                    )
                   ) : (
                     <>
                       <Icon name="info" size={14} width={1.8} />
                       <span>
-                        No está en tu arsenal. Consíguelo (mercado, dojo o su fuente) y en el próximo sync aparecerá aquí
-                        con su rango; vale <b className="n">{fmt(h.item.xp)} XP</b>.
+                        No está en tu arsenal
+                        {h.acquire ? ` — ${h.acquire}` : h.steps.length === 0 ? ' y el catálogo no dice cómo se consigue' : ''}. Vale{' '}
+                        <b className="n">{fmt(h.item.xp)} XP</b>.
                       </span>
                     </>
                   )}
                 </div>
+
+                {h.steps.length > 0 && (
+                  <div className="hunt-steps">
+                    {h.steps.map((s) => (
+                      <div key={s.part.name} className={`hstep hstep--gear ${s.owned > 0 ? 'is-mine' : ''}`}>
+                        <span className="hs-part">
+                          {s.part.name}
+                          {s.missing > 1 && <em className="n"> ×{s.missing}</em>}
+                        </span>
+                        <span className={`hs-have n ${s.owned > 0 ? 'is-ok' : ''}`}>
+                          {s.owned} / {s.part.count}
+                        </span>
+                        {s.drop ? (
+                          <>
+                            <span className="hs-src">{s.drop.where}</span>
+                            <span className="hs-pct n">{s.drop.chance.toFixed(1)}%</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="hs-src faint">{s.part.name === 'Blueprint' && h.acquire ? h.acquire : 'sin fuente en el catálogo'}</span>
+                            <span className="hs-pct faint">—</span>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {h.status === 'missing' && h.gaps.length > 0 && h.steps.length > 0 && (
+                  <div className="goal-note">
+                    <Icon name="hammer" size={14} width={1.7} />
+                    <span>
+                      Y para craftearlo faltan <b>{gapLabel(h.gaps)}</b>.
+                    </span>
+                  </div>
+                )}
               </article>
             ))}
           </div>
@@ -502,7 +589,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
           </p>
           <div className="next-act">
             {session.primary.primeName && (
-              <button className="btn btn--sm" onClick={() => onOpenPrime(session.primary.primeName!)}>
+              <button className="btn btn--sm" onClick={() => onOpenItem(session.primary.primeName!)}>
                 Ver {session.primary.primeName}
               </button>
             )}
@@ -580,7 +667,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                     <button
                       key={y.component.fullName}
                       className="ppill"
-                      onClick={() => onOpenPrime(y.prime.name)}
+                      onClick={() => onOpenItem(y.prime.name)}
                       title={`Abrir ${y.prime.name}`}
                     >
                       <i className={`dot dot--${y.ref.rarity.toLowerCase()}`} />
@@ -690,7 +777,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                                 {r.parts.map((p, i) => (
                                   <span key={p.label}>
                                     {i > 0 && ' · '}
-                                    <button className="dlink" onClick={() => onOpenPrime(p.primeName)}>
+                                    <button className="dlink" onClick={() => onOpenItem(p.primeName)}>
                                       {p.label}
                                     </button>
                                   </span>
@@ -713,7 +800,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
           ) : (
             <div className="rows">
               {byPart.map((ft) => (
-                <button key={ft.component.fullName} className="frow" onClick={() => onOpenPrime(ft.prime.name)}>
+                <button key={ft.component.fullName} className="frow" onClick={() => onOpenItem(ft.prime.name)}>
                   <i className={`dot dot--${ft.relic.rarity.toLowerCase()}`} style={{ marginLeft: 4 }} />
                   <span className="fwhere">
                     <b>{ft.component.fullName}</b>
@@ -756,7 +843,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
           ) : (
             <div className="rows">
               {builds.slice(0, 10).map((b) => (
-                <button key={b.prime.name} className="brow" onClick={() => onOpenPrime(b.prime.name)}>
+                <button key={b.prime.name} className={`brow ${b.gaps.length > 0 ? 'is-lacking' : ''}`} onClick={() => onOpenItem(b.prime.name)}>
                   <PrimeArt
                     image={b.prime.image}
                     category={b.prime.category}
@@ -768,6 +855,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                     <b>{b.prime.name}</b>
                     <span>
                       {CATEGORY_LABEL[b.prime.category] ?? b.prime.category} · {b.prime.components.length} piezas listas
+                      {b.gaps.length > 0 && ` · falta ${gapLabel(b.gaps)}`}
                     </span>
                   </span>
                   <span className="bxp n">{b.xp ? `+${fmt(b.xp)} XP` : '—'}</span>

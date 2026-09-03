@@ -5,6 +5,7 @@ import { Primes } from './views/Primes';
 import { Mastery } from './views/Mastery';
 import { History } from './views/History';
 import { PrimeDetail } from './views/PrimeDetail';
+import { GearDetail } from './views/GearDetail';
 import { SyncButton } from './components/SyncButton';
 import { SyncStatus } from './components/SyncStatus';
 import { Icon } from './components/Icon';
@@ -22,13 +23,13 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'history', label: 'Registro' },
 ];
 
-/** El hash sigue siendo `#tab` o `#tab/Nombre Prime`; `#panel` viejo redirige a `#hoy`. */
-function initialFromHash(): { tab: Tab; prime: string | null } {
+/** El hash sigue siendo `#tab` o `#tab/Nombre del ítem`; `#panel` viejo redirige a `#hoy`. */
+function initialFromHash(): { tab: Tab; item: string | null } {
   const h = decodeURIComponent(location.hash.replace(/^#/, ''));
-  const [t, prime] = h.split('/');
+  const [t, item] = h.split('/');
   const id = t === 'panel' ? 'hoy' : t;
   const tab = (TABS.some((x) => x.id === id) ? id : 'hoy') as Tab;
-  return { tab, prime: prime || null };
+  return { tab, item: item || null };
 }
 
 /** Anillo de progreso hacia el rango objetivo. */
@@ -55,7 +56,9 @@ function Ring({ pct }: { pct: number }) {
 function Shell() {
   const { progress } = useStore();
   const [tab, setTabState] = useState<Tab>(() => initialFromHash().tab);
-  const [openPrime, setOpenPrime] = useState<string | null>(() => initialFromHash().prime);
+  // Un solo «ítem abierto» para primes y equipo normal: el nombre decide qué
+  // cajón se pinta, y las vistas no tienen que saber cuál de los dos es.
+  const [openItem, setOpenItem] = useState<string | null>(() => initialFromHash().item);
 
   const setTab = (t: Tab) => {
     setTabState(t);
@@ -64,7 +67,8 @@ function Shell() {
 
   const xp = totalXp(progress);
   const { mr, goal, pct } = mrGoal(xp);
-  const detail = openPrime ? PRIMES.find((p) => p.name === openPrime) : undefined;
+  const detailPrime = openItem ? PRIMES.find((p) => p.name === openItem) : undefined;
+  const detailGear = openItem && !detailPrime ? MASTERY_GEAR.find((g) => g.name === openItem) : undefined;
 
   return (
     <div className="shell">
@@ -116,15 +120,16 @@ function Shell() {
       </header>
 
       <main>
-        {tab === 'hoy' && <Today onOpenPrime={setOpenPrime} />}
-        {tab === 'primes' && <Primes onOpen={setOpenPrime} />}
-        {tab === 'mastery' && <Mastery />}
+        {tab === 'hoy' && <Today onOpenItem={setOpenItem} />}
+        {tab === 'primes' && <Primes onOpen={setOpenItem} />}
+        {tab === 'mastery' && <Mastery onOpen={setOpenItem} />}
         {tab === 'history' && <History />}
       </main>
 
       {/* El cajón vive en el shell, no dentro de una pestaña: se abre encima
           de donde estés y al cerrarlo sigues en tu sitio. */}
-      {detail && <PrimeDetail prime={detail} onClose={() => setOpenPrime(null)} />}
+      {detailPrime && <PrimeDetail prime={detailPrime} onClose={() => setOpenItem(null)} />}
+      {detailGear && <GearDetail item={detailGear} onClose={() => setOpenItem(null)} />}
     </div>
   );
 }

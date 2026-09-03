@@ -46,6 +46,31 @@ export interface BuildDep {
   count: number;
 }
 
+/** De dónde cae algo — misión, jefe, bounty — y con qué probabilidad. */
+export interface Drop {
+  where: string;
+  chance: number;
+}
+
+/**
+ * Pieza con nombre de un ítem no-prime: el blueprint, o Chassis, Barrel…
+ * Se rastrea una a una desde el inventario, como las piezas prime; la clave
+ * en `Progress.parts` la da `gearPartKey()`.
+ */
+export interface GearPart {
+  name: string;
+  un?: string;
+  count: number;
+  /** las mejores fuentes; sin esto la pieza se compra, se investiga o viene de una quest */
+  drops?: Drop[];
+}
+
+/** Recurso que consume un crafteo: Alloy Plate ×1000, Forma ×1. */
+export interface ResourceNeed {
+  name: string;
+  count: number;
+}
+
 export interface MasteryItem {
   name: string;
   un?: string;
@@ -61,6 +86,18 @@ export interface MasteryItem {
   usedIn?: BuildDep[];
   /** ítems masterizables que se consumen al construir éste */
   needs?: BuildDep[];
+  /** piezas con nombre (solo no-prime: las prime viven en `Prime.components`) */
+  parts?: GearPart[];
+  /** recursos que pide el crafteo, prime o no; solo interesan como déficit */
+  resources?: ResourceNeed[];
+  /** rango de maestría mínimo para usarlo */
+  mr?: number;
+  /** precio del ítem hecho en el mercado, en platino */
+  plat?: number;
+  /** lo que cuesta el blueprint en créditos — mercado o dojo, el catálogo no distingue */
+  credits?: number;
+  /** de dónde cae el ítem entero cuando no tiene blueprint (Kuva, Tenet…) */
+  drops?: Drop[];
 }
 
 export interface GameData {
@@ -72,6 +109,8 @@ export interface GameData {
   starChartNodes: string[];
   /** relic uniqueName (sin prefijo /Lotus/Types/Game/Projections/) -> "Lith S1 Intact" */
   relicIndex: Record<string, string>;
+  /** nombre del recurso -> uniqueName, para leerlo del inventario importado */
+  resourceIndex: Record<string, string>;
 }
 
 // ---------- user progress (localStorage) ----------
@@ -126,6 +165,12 @@ export interface Progress {
    * y equipo normal comparten el mapa: la mira vive en Primes y en Maestría.
    */
   targets: Record<string, boolean>;
+  /**
+   * recurso -> cantidad en el inventario, del último sync. Vacío hasta el
+   * primer sync, y los lectores lo tratan como «no sé», no como «cero»:
+   * inventar un déficit de Forma a quien no ha sincronizado sería mentir.
+   */
+  resources: Record<string, number>;
   extras: Extras;
   history: HistoryEvent[];
 }
@@ -138,6 +183,7 @@ export const EMPTY_PROGRESS: Progress = {
   ranks: {},
   relics: {},
   targets: {},
+  resources: {},
   extras: { junctions: 0, junctionsSP: 0, railjack: 0, drifter: 0, starChart: 0, starChartSP: 0 },
   history: [],
 };

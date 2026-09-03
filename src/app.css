@@ -286,6 +286,8 @@
 .bname b { font-family: var(--d); font-size: var(--fs-m); font-weight: 600; display: block; }
 .bname span { font-size: var(--fs-xs); color: var(--text-faint); }
 .bxp { font-size: var(--fs-s); font-weight: 600; color: var(--gold-bright); white-space: nowrap; }
+/* le falta un recurso: el XP sigue ahí pero todavía no se cobra */
+.brow.is-lacking .bxp { color: var(--text-faint); }
 
 /* desglose de XP */
 .mrx-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-size: var(--fs-s); }
@@ -437,6 +439,24 @@
 .comp-h b { font-family: var(--d); font-size: var(--fs-m); font-weight: 600; flex: 1; }
 .duc { font-family: var(--d); font-size: var(--fs-xs); color: var(--gold); background: var(--glow); border-radius: var(--r-xs); padding: 2px 7px; white-space: nowrap; }
 .comp-mkt { color: var(--teal); }
+.comp-h .k { white-space: nowrap; }
+/* listas del cajón de equipo normal: piezas (hstep) y recursos (res) */
+.gd-list { display: flex; flex-direction: column; gap: 1px; padding: 6px; }
+.res {
+  display: grid;
+  grid-template-columns: 1fr auto minmax(0, auto);
+  gap: 10px;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: var(--r-s);
+  font-size: var(--fs-xs);
+  background: var(--inset);
+}
+.res-n { color: var(--text-dim); }
+.res-n em { font-style: normal; }
+.res-c { color: var(--text-faint); white-space: nowrap; }
+.res.is-gap .res-n,
+.res.is-gap .res-c { color: var(--text); }
 .comp-mkt:hover { color: var(--text); }
 .step { display: flex; align-items: center; gap: 4px; }
 .step button {
@@ -520,33 +540,47 @@
   transition: background 0.12s, color 0.12s;
 }
 .mast-item:hover { background: var(--surface-2); color: var(--text); }
-.mast-item.is-done { color: var(--gold-bright); }
-.mast-item.is-done .mi-name { text-decoration: line-through; text-decoration-color: var(--hair); }
+.mast-row.is-done .mast-item { color: var(--gold-bright); }
+.mast-row.is-done .mi-name { text-decoration: line-through; text-decoration-color: var(--hair); }
+/* la casilla es un botón propio: marca masterizado sin abrir el cajón */
 .mi-check {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-xs);
+  color: var(--void);
+}
+.mi-check::before {
+  content: '';
   width: 14px;
   height: 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-xs);
-  flex: none;
-  display: grid;
-  place-items: center;
+  grid-area: 1 / 1;
 }
-.mast-item.is-done .mi-check { background: var(--gold); border-color: var(--gold); color: var(--void); }
+.mi-check svg { grid-area: 1 / 1; }
+.mi-check:hover::before { border-color: var(--hair); }
+.mast-row.is-done .mi-check::before { background: var(--gold); border-color: var(--gold); }
 .mi-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mi-xp { font-size: var(--fs-xs); color: var(--text-faint); }
+/* en teal, el rango de lo que tienes sin subir: accionable ya */
+.mast-row.is-owned .mi-xp { color: var(--teal); }
 /* ingrediente de un crafteo aún pendiente: no vender (el tooltip dice de cuál) */
 .mi-keep { color: var(--gold-bright); flex: none; filter: drop-shadow(0 0 3px var(--glow)); }
-.mast-item.is-keep { box-shadow: inset 2.5px 0 0 var(--gold); background: var(--glow); }
-.mast-item.is-keep:hover { background: var(--surface-2); }
-/* fila = botón de masterizado + mira. La mira aparece al pasar por encima o
-   si ya está encendida: 800 miras a la vez eran ruido, no información. */
+.mast-row.is-keep .mast-item { box-shadow: inset 2.5px 0 0 var(--gold); background: var(--glow); }
+.mast-row.is-keep .mast-item:hover { background: var(--surface-2); }
+/* fila = casilla + nombre (abre el cajón) + mira. La mira aparece al pasar
+   por encima o si ya está encendida: 800 miras a la vez eran ruido. */
 .mast-row { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .mast-row .mast-item { flex: 1; min-width: 0; }
 .mi-star { width: 26px; height: 26px; opacity: 0; }
 .mast-row:hover .mi-star,
 .mi-star.is-on,
 .mi-star:focus-visible { opacity: 1; }
-.mast-row.is-target .mi-name { color: var(--text); }
+.mast-row.is-target .mi-name,
+.mast-row.is-owned .mi-name { color: var(--text); }
 /* táctil: no hay hover, la mira se ve siempre */
 @media (pointer: coarse) {
   .mi-star { opacity: 1; }
@@ -693,11 +727,10 @@
 .hunt-open:hover .hunt-n b { color: var(--gold-bright); }
 .hunt-n span { font-size: var(--fs-xs); color: var(--text-faint); }
 .hunt-c { font-size: var(--fs-l); font-weight: 600; color: var(--gold-bright); white-space: nowrap; }
-/* equipo normal en la mira: no hay cajón que abrir, así que la cabecera no
-   invita al clic ni cambia al pasar por encima */
-.hunt--gear .hunt-open { cursor: default; }
-.hunt--gear .hunt-open:hover .hunt-ico { color: var(--text-dim); border-color: var(--line); }
-.hunt--gear .hunt-open:hover .hunt-n b { color: inherit; }
+/* piezas de equipo normal: nombre | tienes | fuente | % (sin reliquia en medio) */
+.hstep--gear { grid-template-columns: 110px 54px 1fr auto; }
+.hs-have { font-family: var(--d); color: var(--text-faint); white-space: nowrap; }
+.hs-have.is-ok { color: var(--teal); }
 
 .hunt-verdict {
   display: flex;

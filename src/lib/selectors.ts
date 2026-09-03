@@ -1,5 +1,5 @@
-import type { BuildDep, MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
-import { MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
+import type { BuildDep, Drop, GearPart, MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
+import { MASTERY_GEAR, PRIMES, gearPartKey, partsNeeded, relicSources } from './gameData';
 import { fmt, pendingXp } from './mastery';
 
 export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
@@ -323,6 +323,8 @@ export interface BuildTarget {
   prime: Prime;
   /** XP de maestría que suma al construirlo y subirlo a rango máximo */
   xp: number;
+  /** recursos que el crafteo pide y no tienes: con alguno, «sin jugar» es mentira */
+  gaps: ResourceGap[];
 }
 
 /** Primes con todas las piezas en el inventario: mastery esperando en la foundry. */
@@ -331,10 +333,81 @@ export function buildReady(progress: Progress): BuildTarget[] {
   for (const p of PRIMES) {
     if (p.founders) continue;
     if (primeStatus(p, progress) !== 'ready') continue;
-    out.push({ prime: p, xp: MASTERY_GEAR.find((g) => g.name === p.name)?.xp ?? 0 });
+    const g = MASTERY_GEAR.find((x) => x.name === p.name);
+    out.push({ prime: p, xp: g?.xp ?? 0, gaps: resourceGaps(g, progress) });
   }
-  out.sort((a, b) => b.xp - a.xp || a.prime.name.localeCompare(b.prime.name));
+  // Lo que se puede craftear ya mismo arriba; lo que espera un Argon, debajo.
+  out.sort((a, b) => Number(a.gaps.length > 0) - Number(b.gaps.length > 0) || b.xp - a.xp || a.prime.name.localeCompare(b.prime.name));
   return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Recursos — solo como déficit.
+   Nadie quiere ver que tiene 200.000 Ferrite; quiere saber que le faltan
+   7 Fieldron para la Supra antes de abrir la foundry y encontrar el botón
+   gris. De dónde se farmea cada recurso no es asunto de esta app.
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface ResourceGap {
+  name: string;
+  need: number;
+  have: number;
+  missing: number;
+}
+
+/**
+ * Hasta el primer sync `resources` está vacío, y vacío significa «no sé»,
+ * no «cero»: sin este guardia la app le diría a quien no ha sincronizado
+ * que le falta Forma para todo.
+ */
+export const resourcesKnown = (progress: Progress) => Object.keys(progress.resources).length > 0;
+
+/** Se pudre en 24 h: farmearlo antes que el resto es tirarlo. */
+export const PERISHABLE = new Set(['Argon Crystal']);
+
+export function resourceGaps(item: MasteryItem | undefined, progress: Progress): ResourceGap[] {
+  if (!item?.resources || !resourcesKnown(progress)) return [];
+  const out: ResourceGap[] = [];
+  for (const r of item.resources) {
+    const have = progress.resources[r.name] ?? 0;
+    if (have < r.count) out.push({ name: r.name, need: r.count, have, missing: r.count - have });
+  }
+  return out;
+}
+
+/**
+ * Déficit conjunto de varios crafteos: se suman las necesidades y se comparan
+ * con el stock una sola vez. Sumar los déficits individuales contaría la misma
+ * Forma dos veces — o ninguna, si cada ítem por separado cabe en el stock.
+ */
+export function aggregateGaps(items: MasteryItem[], progress: Progress): ResourceGap[] {
+  if (!resourcesKnown(progress)) return [];
+  const need = new Map<string, number>();
+  for (const it of items) for (const r of it.resources ?? []) need.set(r.name, (need.get(r.name) ?? 0) + r.count);
+  const out: ResourceGap[] = [];
+  for (const [name, n] of need) {
+    const have = progress.resources[name] ?? 0;
+    if (have < n) out.push({ name, need: n, have, missing: n - have });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** «3 Forma, 14 Fieldron» */
+export const gapLabel = (gaps: ResourceGap[]) => gaps.map((g) => `${fmt(g.missing)} ${g.name}`).join(', ');
+
+/**
+ * Cómo se consigue el blueprint (o el ítem) de un equipo normal, con lo que el
+ * catálogo sabe y nada más. Sin dato devuelve undefined y la vista calla: mejor
+ * que inventar «cómpralo en el mercado» para algo que es de dojo.
+ */
+export function acquireLabel(item: MasteryItem): string | undefined {
+  const bp = item.parts?.find((p) => p.name === 'Blueprint');
+  const drop = item.drops?.[0] ?? bp?.drops?.[0];
+  if (drop) return `${bp && !item.drops ? 'el blueprint cae' : 'cae'} en ${drop.where} (${drop.chance.toFixed(1)}%)`;
+  const bits: string[] = [];
+  if (item.credits) bits.push(`blueprint por ${fmt(item.credits)} créditos (mercado o dojo)`);
+  if (item.plat) bits.push(`${bits.length ? 'o hecho' : 'hecho'} por ${item.plat} platino`);
+  return bits.length ? bits.join(' ') : undefined;
 }
 
 /** Texto corto de una fuente de reliquia: "Io (Jupiter) · Defense · Rot A". */
@@ -520,13 +593,20 @@ export function huntList(progress: Progress): Hunt[] {
 /**
  * Lo que tienes en la mira y no es prime. `targets` se indexa por nombre
  * visible igual que todo el progreso, así que un arma normal cabe en el mismo
- * mapa sin migrar nada; lo que cambia es que aquí no hay ruta de reliquias
- * que armar — un arma normal se compra, se investiga o la suelta un jefe, y
- * ese dato el catálogo no lo trae limpio. Lo que sí sabemos es si ya está en
- * tu arsenal y en qué rango, y con eso alcanza para que el escalón «sube»
- * la trate como objetivo.
+ * mapa sin migrar nada. La ruta es la que el catálogo sabe: piezas con su
+ * fuente cuando la tienen (Rhino en Fossa, Gara en los bounties), el precio
+ * del blueprint cuando no, y los recursos que faltan para craftearlo. Donde
+ * el dato no existe la tarjeta calla en vez de inventar.
  */
 export type GearHuntStatus = 'missing' | 'levelling' | 'mastered';
+
+export interface GearStep {
+  part: GearPart;
+  owned: number;
+  missing: number;
+  /** la mejor fuente conocida; sin ella la pieza se compra o viene de una quest */
+  drop?: Drop;
+}
 
 export interface GearHunt {
   item: MasteryItem;
@@ -534,6 +614,22 @@ export interface GearHunt {
   rank: number;
   /** XP que todavía puede dar */
   pending: number;
+  /** piezas que aún faltan; vacío si ya está en el arsenal o el catálogo no las trae */
+  steps: GearStep[];
+  /** recursos que faltan para craftearlo (solo con sync) */
+  gaps: ResourceGap[];
+  acquire?: string;
+}
+
+/** Piezas pendientes de un equipo normal, con lo que tienes de cada una. */
+export function gearSteps(item: MasteryItem, progress: Progress): GearStep[] {
+  const out: GearStep[] = [];
+  for (const part of item.parts ?? []) {
+    const owned = Math.min(progress.parts[gearPartKey(item, part)] ?? 0, part.count);
+    if (owned >= part.count) continue;
+    out.push({ part, owned, missing: part.count - owned, drop: part.drops?.[0] });
+  }
+  return out;
 }
 
 const PRIME_NAMES = new Set(PRIMES.map((p) => p.name));
@@ -548,6 +644,10 @@ export function gearHunts(progress: Progress): GearHunt[] {
       status,
       rank: status === 'levelling' ? Math.min(progress.ranks[g.name] ?? 0, g.cap) : 0,
       pending: pendingXp(g, progress),
+      // ya en el arsenal: la ruta sobra, solo queda jugarlo
+      steps: status === 'missing' ? gearSteps(g, progress) : [],
+      gaps: status === 'missing' ? resourceGaps(g, progress) : [],
+      acquire: status === 'missing' ? acquireLabel(g) : undefined,
     });
   }
   // Lo jugable arriba: lo que ya tienes > lo que falta conseguir > masterizado.
@@ -654,15 +754,23 @@ export function nextSession(progress: Progress, focus: SessionFocus = 'primes'):
 
   const builds = buildReady(progress);
   if (builds.length > 0) {
-    const xp = builds.reduce((s, b) => s + b.xp, 0);
+    // Solo los que se pueden craftear ya: «sin jugar» tiene que ser verdad.
+    // Si a todos les falta algún recurso, la recomendación lo dice y el
+    // esfuerzo pasa a ser ese farmeo.
+    const clean = builds.filter((b) => b.gaps.length === 0);
+    const pick = clean.length > 0 ? clean : builds;
+    const xp = pick.reduce((s, b) => s + b.xp, 0);
     recs.push({
       kind: 'build',
-      title: `Construye ${listNames(builds.map((b) => b.prime.name))}`,
-      why: 'ya tienes todas las piezas — es maestría esperando en la foundry',
-      effort: 'sin jugar',
+      title: `Construye ${listNames(pick.map((b) => b.prime.name))}`,
+      why:
+        clean.length > 0
+          ? 'ya tienes todas las piezas — es maestría esperando en la foundry'
+          : `tienes todas las piezas, pero craftearlo pide ${gapLabel(pick[0].gaps)} que no tienes`,
+      effort: clean.length > 0 ? 'sin jugar' : `falta ${gapLabel(pick[0].gaps)}`,
       value: `+${fmt(xp)} XP`,
-      primeName: builds[0].prime.name,
-      forTarget: builds.some((b) => targets.has(b.prime.name)),
+      primeName: pick[0].prime.name,
+      forTarget: pick.some((b) => targets.has(b.prime.name)),
     });
   }
 
