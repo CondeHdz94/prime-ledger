@@ -4,7 +4,7 @@ import { aggregateGaps, buildReady, farmByMission, farmTargets, gapLabel, gearHu
 import type { SessionFocus, SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
-import { CatIcon, Icon } from '../components/Icon';
+import { Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { SyncButton } from '../components/SyncButton';
@@ -447,9 +447,7 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
               <article key={h.item.name} className={`hunt ${h.status === 'mastered' ? 'hunt--mastered' : ''}`}>
                 <div className="hunt-h">
                   <button className="hunt-open" onClick={() => onOpenItem(h.item.name)}>
-                    <span className="hunt-ico">
-                      <CatIcon cat={h.item.category} size={20} />
-                    </span>
+                    <PrimeArt image={h.item.image} category={h.item.category} size={20} imgClass="hunt-art" glyphClass="hunt-ico" />
                     <span className="hunt-n">
                       <b>{h.item.name}</b>
                       <span>

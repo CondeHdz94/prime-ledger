@@ -5,7 +5,8 @@ import { CATEGORY_LABEL, gearPartKey } from '../lib/gameData';
 import { useStore } from '../lib/store';
 import { PERISHABLE, acquireLabel, depLabel, gapLabel, gearSteps, pendingConsumers, resourceGaps, resourcesKnown } from '../lib/selectors';
 import { fmt, pendingXp } from '../lib/mastery';
-import { CatIcon, Icon } from '../components/Icon';
+import { Icon } from '../components/Icon';
+import { PrimeArt } from '../components/PrimeArt';
 import { TargetStar } from '../components/TargetStar';
 
 /**
@@ -101,9 +102,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
       <aside className="drawer" role="dialog" aria-label={item.name}>
         <div className="dw">
           <div className="dw-h">
-            <span className="dw-ico">
-              <CatIcon cat={item.category} size={30} />
-            </span>
+            <PrimeArt image={item.image} category={item.category} size={30} imgClass="dw-art" glyphClass="dw-ico" />
             <div>
               <h2>{item.name}</h2>
               <span className="k">

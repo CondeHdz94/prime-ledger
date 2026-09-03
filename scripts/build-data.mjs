@@ -187,6 +187,8 @@ for (const item of gear) {
     category: item.category,
     type: item.type,
     isPrime: item.isPrime || undefined,
+    // el mismo CDN que los primes; si el archivo no existe (Carrier) la vista cae al glifo
+    image: item.imageName,
     cap,
     xp: cap * perLevel,
     // total affinity at rank cap — used to detect "mastered" from XPInfo

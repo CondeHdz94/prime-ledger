@@ -77,6 +77,8 @@ export interface MasteryItem {
   category: string;
   type?: string;
   isPrime?: true;
+  /** archivo en cdn.warframestat.us/img; puede no existir, la vista cae al glifo */
+  image?: string;
   cap: number;
   xp: number;
   /** total affinity at rank cap — threshold to detect "mastered" from XPInfo */
