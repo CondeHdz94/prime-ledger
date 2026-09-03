@@ -33,7 +33,8 @@ comentario de `CATALOG` — ya hubo un bug de tres números distintos para la mi
 lista.
 
 **El progreso se indexa por nombre, no por `uniqueName`.** `Progress.parts`,
-`mastered`, `ranks`, `built` y `targets` son mapas por nombre visible. De ahí la
+`mastered`, `ranks`, `built` y `targets` son mapas por nombre visible (`targets`
+admite primes y equipo normal por igual). De ahí la
 deduplicación de `MASTERY_GEAR` en `gameData.ts` (dos "Grimoire" distintos
 colisionan). Cambiar esto es una migración, no un refactor.
 
@@ -68,7 +69,8 @@ categoría nueva del catálogo no aparece rota, aparece sin etiqueta o al final.
 - `lib/store.tsx` — reducer + Context + localStorage.
 - `views/Today.tsx` — el panel: metas (dónde estás) → objetivos (qué persigues) →
   «Tu próxima sesión» (`nextSession()` en `selectors.ts`: la escalera resuelta
-  en una recomendación, consciente de tus objetivos) → y, plegadas, las
+  en una recomendación, consciente de tus objetivos y del foco Primes/Maestría,
+  que reordena la escalera sin cambiarla) → y, plegadas, las
   secciones en orden de esfuerzo: abre lo que ya tienes → farmea → construye →
   sube de rango. Ese orden es la
   tesis de la app; no lo reordenes por conveniencia visual.

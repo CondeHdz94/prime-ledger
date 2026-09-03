@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { buildReady, farmByMission, farmTargets, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, sourceLabel, tally } from '../lib/selectors';
-import type { SessionKind } from '../lib/selectors';
+import { buildReady, farmByMission, farmTargets, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, sourceLabel, tally } from '../lib/selectors';
+import type { SessionFocus, SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
-import { Icon } from '../components/Icon';
+import { CatIcon, Icon } from '../components/Icon';
 import type { IconName } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { SyncButton } from '../components/SyncButton';
@@ -48,6 +48,18 @@ const defaultOpen = (): SectId[] =>
     ? ['next', 'targets', 'open', 'farm', 'build']
     : ['next', 'targets'];
 const SECT_OF: Record<SessionKind, SectId> = { open: 'open', farm: 'farm', build: 'build', level: 'level' };
+
+/** Foco de la próxima sesión. Se guarda aparte de las secciones plegadas
+ *  porque cambia la recomendación, no la vista; y es tan desechable como
+ *  ellas: sin preferencia, primes, que es la meta 01. */
+const LS_FOCUS = 'prime-tracker:hoy-foco';
+function loadFocus(): SessionFocus {
+  try {
+    return localStorage.getItem(LS_FOCUS) === 'mastery' ? 'mastery' : 'primes';
+  } catch {
+    return 'primes';
+  }
+}
 const ICON_OF: Record<SessionKind, IconName> = { open: 'relic', farm: 'arrow', build: 'hammer', level: 'up' };
 
 function loadOpenSects(): Set<SectId> {
@@ -66,6 +78,15 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const [farmMode, setFarmMode] = useState<'mission' | 'part'>('mission');
   const [openMission, setOpenMission] = useState<string | null>(null);
   const [openSects, setOpenSects] = useState<Set<SectId>>(loadOpenSects);
+  const [focus, setFocusState] = useState<SessionFocus>(loadFocus);
+  const setFocus = (f: SessionFocus) => {
+    setFocusState(f);
+    try {
+      localStorage.setItem(LS_FOCUS, f);
+    } catch {
+      /* preferencia desechable */
+    }
+  };
   const isOpen = (id: SectId) => openSects.has(id);
   const setSect = (id: SectId, open: boolean) => {
     setOpenSects((prev) => {
@@ -103,7 +124,8 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
   const byPart = useMemo(() => farmTargets(progress).slice(0, 12), [progress]);
   const builds = useMemo(() => buildReady(progress), [progress]);
   const hunts = useMemo(() => huntList(progress), [progress]);
-  const session = useMemo(() => nextSession(progress), [progress]);
+  const gear = useMemo(() => gearHunts(progress), [progress]);
+  const session = useMemo(() => nextSession(progress, focus), [progress, focus]);
   const levelUp = useMemo(() => levelUpQueue(progress), [progress]);
   // Lo que marcas se queda a la vista y tachado, no se desvanece bajo el
   // cursor: si le diste sin querer, un segundo clic lo revierte. Sale del
@@ -150,10 +172,17 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       const g = MASTERY_GEAR.find((x) => x.name === name);
       if (g) pool.set(name, g);
     }
+    // Lo que está en la mira primero, como en la cola: si no, un objetivo
+    // barato podía quedar fuera de las 12 filas.
     return [...pool.values()]
-      .sort((a, b) => b.xp - a.xp || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) =>
+          Number(!!progress.targets[b.name]) - Number(!!progress.targets[a.name]) ||
+          b.xp - a.xp ||
+          a.name.localeCompare(b.name),
+      )
       .slice(0, 12);
-  }, [levelUp, levelledRecent, progress.built]);
+  }, [levelUp, levelledRecent, progress.built, progress.targets]);
 
   // pendientes que no caben en las 12 filas (las ya marcadas ocupan sitio)
   const morePending = levelUp.length - levelUpShown.filter((g) => !progress.mastered[g.name]).length;
@@ -241,7 +270,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
       </div>
 
       {/* ── 00 · lo que estás buscando ahora ──────────────────── */}
-      {hunts.length > 0 ? (
+      {hunts.length + gear.length > 0 ? (
         <section id="sect-targets" className={`card card--inlay sect rise ${isOpen('targets') ? '' : 'is-collapsed'}`} style={{ animationDelay: '90ms' }}>
           <div className="sect-h sect-h--fold" onClick={onHead('targets')}>
             {fold('targets')}
@@ -251,7 +280,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
               <div className="sect-s">tus objetivos marcados, con la ruta completa para cada uno</div>
             </div>
             <div className="sect-r">
-              <span className="badge badge--mastered">{hunts.length} en la mira</span>
+              <span className="badge badge--mastered">{hunts.length + gear.length} en la mira</span>
             </div>
           </div>
 
@@ -278,7 +307,7 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                   <span className="hunt-c n">
                     {h.owned}/{h.total}
                   </span>
-                  <TargetStar primeName={h.prime.name} size={15} />
+                  <TargetStar name={h.prime.name} size={15} />
                 </div>
 
                 {h.total > 0 && (
@@ -379,14 +408,59 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                 )}
               </article>
             ))}
+
+            {/* Equipo normal en la mira: sin ruta de reliquias (no la hay),
+                pero con lo que sí sabemos — si está en tu arsenal y en qué rango. */}
+            {gear.map((h) => (
+              <article key={h.item.name} className={`hunt hunt--gear ${h.status === 'mastered' ? 'hunt--mastered' : ''}`}>
+                <div className="hunt-h">
+                  <span className="hunt-open">
+                    <span className="hunt-ico">
+                      <CatIcon cat={h.item.category} size={20} />
+                    </span>
+                    <span className="hunt-n">
+                      <b>{h.item.name}</b>
+                      <span>{CATEGORY_LABEL[h.item.category] ?? h.item.category} · equipo normal</span>
+                    </span>
+                  </span>
+                  <span className="hunt-c n">
+                    {h.status === 'levelling' ? `${h.rank}/${h.item.cap}` : h.status === 'mastered' ? `${h.item.cap}/${h.item.cap}` : '—'}
+                  </span>
+                  <TargetStar name={h.item.name} size={15} />
+                </div>
+                <div className="hunt-verdict">
+                  {h.status === 'mastered' ? (
+                    <>
+                      <Icon name="check" size={14} width={1.8} color="var(--gold)" />
+                      <span>Ya lo tienes masterizado. Puedes quitarlo de la lista.</span>
+                    </>
+                  ) : h.status === 'levelling' ? (
+                    <>
+                      <Icon name="up" size={14} width={1.8} color="var(--teal)" />
+                      <span>
+                        En tu arsenal en rango {h.rank}/{h.item.cap} — súbelo y son <b className="n">{fmt(h.pending)} XP</b>.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="info" size={14} width={1.8} />
+                      <span>
+                        No está en tu arsenal. Consíguelo (mercado, dojo o su fuente) y en el próximo sync aparecerá aquí
+                        con su rango; vale <b className="n">{fmt(h.item.xp)} XP</b>.
+                      </span>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       ) : (
         <div className="hunt-hint">
           <Icon name="target" size={14} width={1.6} />
           <span>
-            ¿Andas detrás de algo puntual? Pon cualquier prime en la mira (el botón con la mira) y aparecerá aquí con
-            la ruta completa para conseguirlo.
+            ¿Andas detrás de algo puntual? Pon cualquier prime o arma en la mira (el botón con la mira, en Primes y en
+            Maestría) y aparecerá aquí: los primes con la ruta completa, el resto con su rango.
           </span>
         </div>
       )}
@@ -401,9 +475,23 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
             <span className="sect-effort">ahora</span>
             <div>
               <div className="sect-t">Tu próxima sesión</div>
-              <div className="sect-s">la escalera resuelta: qué hacer con la próxima media hora, y por qué</div>
+              <div className="sect-s">
+                {focus === 'primes'
+                  ? 'la escalera resuelta: qué hacer con la próxima media hora, y por qué'
+                  : 'la escalera resuelta con la maestría por delante: XP directo antes que piezas'}
+              </div>
             </div>
             <div className="sect-r">
+              {/* El foco reordena la escalera, no la reemplaza: las cuatro
+                  opciones siguen ahí, cambia cuál se recomienda primero. */}
+              <div className="seg" role="group" aria-label="Foco de la sesión">
+                <button className={focus === 'primes' ? 'is-on' : ''} onClick={() => setFocus('primes')} aria-pressed={focus === 'primes'}>
+                  Primes
+                </button>
+                <button className={focus === 'mastery' ? 'is-on' : ''} onClick={() => setFocus('mastery')} aria-pressed={focus === 'mastery'}>
+                  Maestría
+                </button>
+              </div>
               <span className="badge badge--mastered">{session.primary.effort}</span>
             </div>
           </div>
@@ -752,7 +840,10 @@ export function Today({ onOpenPrime }: { onOpenPrime: (name: string) => void }) 
                       <Icon name="check" size={10} width={3} />
                     </span>
                     <span className="lname">
-                      <b>{g.name}</b>
+                      <b>
+                        {g.name}
+                        {progress.targets[g.name] && <Icon name="target" size={12} width={1.8} className="ltarget" />}
+                      </b>
                       <span>
                         {!done ? (
                           `${CATEGORY_LABEL[g.category] ?? g.category} · rango ${rank}/${g.cap}`

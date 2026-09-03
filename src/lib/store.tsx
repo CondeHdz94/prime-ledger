@@ -12,7 +12,7 @@ type Action =
   | { type: 'setPart'; fullName: string; owned: number; max: number; primeName: string }
   | { type: 'setBuilt'; primeName: string; built: boolean }
   | { type: 'setMastered'; itemName: string; mastered: boolean }
-  | { type: 'toggleTarget'; primeName: string }
+  | { type: 'toggleTarget'; name: string }
   | { type: 'setExtra'; key: keyof Extras; value: number }
   | { type: 'note'; label: string }
   | { type: 'importProgress'; progress: Progress }
@@ -72,16 +72,18 @@ function reducer(state: Progress, action: Action): Progress {
       };
     }
     case 'toggleTarget': {
-      const on = !state.targets[action.primeName];
+      // `name` y no `primeName`: en la mira cabe cualquier ítem masterizable,
+      // el mapa siempre fue por nombre visible.
+      const on = !state.targets[action.name];
       const targets = { ...state.targets };
-      if (on) targets[action.primeName] = true;
-      else delete targets[action.primeName];
+      if (on) targets[action.name] = true;
+      else delete targets[action.name];
       return {
         ...state,
         targets,
         // Empezar una cacería es un evento con fecha; quitarla es una
         // corrección, así que no ensucia el registro.
-        history: on ? [...state.history, ev('target', `Buscando: ${action.primeName}`)] : state.history,
+        history: on ? [...state.history, ev('target', `Buscando: ${action.name}`)] : state.history,
       };
     }
     case 'setExtra': {

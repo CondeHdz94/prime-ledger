@@ -370,9 +370,15 @@ export const depLabel = (deps: BuildDep[]) =>
 export function levelUpQueue(progress: Progress): MasteryItem[] {
   return MASTERY_GEAR.filter(
     (g) => progress.built[g.name] && !progress.mastered[g.name] && !g.founders,
-    // Ordenado por lo que todavía puede dar, no por su total: un arma en
+    // Lo que tienes en la mira va primero, aunque rinda menos: lo marcaste tú.
+    // Después, por lo que todavía puede dar, no por su total: un arma en
     // 28/30 rinde menos que una intacta que valga lo mismo.
-  ).sort((a, b) => pendingXp(b, progress) - pendingXp(a, progress) || a.name.localeCompare(b.name));
+  ).sort(
+    (a, b) =>
+      Number(!!progress.targets[b.name]) - Number(!!progress.targets[a.name]) ||
+      pendingXp(b, progress) - pendingXp(a, progress) ||
+      a.name.localeCompare(b.name),
+  );
 }
 
 /**
@@ -511,16 +517,68 @@ export function huntList(progress: Progress): Hunt[] {
   return out;
 }
 
+/**
+ * Lo que tienes en la mira y no es prime. `targets` se indexa por nombre
+ * visible igual que todo el progreso, así que un arma normal cabe en el mismo
+ * mapa sin migrar nada; lo que cambia es que aquí no hay ruta de reliquias
+ * que armar — un arma normal se compra, se investiga o la suelta un jefe, y
+ * ese dato el catálogo no lo trae limpio. Lo que sí sabemos es si ya está en
+ * tu arsenal y en qué rango, y con eso alcanza para que el escalón «sube»
+ * la trate como objetivo.
+ */
+export type GearHuntStatus = 'missing' | 'levelling' | 'mastered';
+
+export interface GearHunt {
+  item: MasteryItem;
+  status: GearHuntStatus;
+  rank: number;
+  /** XP que todavía puede dar */
+  pending: number;
+}
+
+const PRIME_NAMES = new Set(PRIMES.map((p) => p.name));
+
+export function gearHunts(progress: Progress): GearHunt[] {
+  const out: GearHunt[] = [];
+  for (const g of MASTERY_GEAR) {
+    if (!progress.targets[g.name] || PRIME_NAMES.has(g.name)) continue;
+    const status: GearHuntStatus = progress.mastered[g.name] ? 'mastered' : progress.built[g.name] ? 'levelling' : 'missing';
+    out.push({
+      item: g,
+      status,
+      rank: status === 'levelling' ? Math.min(progress.ranks[g.name] ?? 0, g.cap) : 0,
+      pending: pendingXp(g, progress),
+    });
+  }
+  // Lo jugable arriba: lo que ya tienes > lo que falta conseguir > masterizado.
+  const rank: Record<GearHuntStatus, number> = { levelling: 0, missing: 1, mastered: 2 };
+  out.sort((a, b) => rank[a.status] - rank[b.status] || b.pending - a.pending || a.item.name.localeCompare(b.item.name));
+  return out;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Tu próxima sesión — la escalera resuelta en una frase.
 
    El panel ya calcula los cuatro rankings (abrir, farmear, construir,
    subir); lo que no hacía era elegir. Aquí se elige: la primera opción de la
-   escalera que tenga algo, salvo que alguna sirva a un prime que estás
+   escalera que tenga algo, salvo que alguna sirva a algo que estás
    siguiendo — entonces esa gana, porque nadie caza 161 primes a la vez.
+
+   El foco cambia el orden en que se recorre la escalera, no la escalera: con
+   foco en maestría «sube» y «construye» (lo que da XP directo) se miran
+   antes que «abre» y «farmea». Hacía falta porque MR 30 pide 2,25 M de XP y
+   todo lo prime junto da 672 K: el 77 % del camino es equipo normal, y con la
+   escalera fija, mientras hubiera una sola reliquia abrible, subir un arma
+   nunca llegaba a ser la recomendación.
    ═══════════════════════════════════════════════════════════════ */
 
 export type SessionKind = 'open' | 'farm' | 'build' | 'level';
+/** qué persigues hoy: la colección prime o el rango de maestría */
+export type SessionFocus = 'primes' | 'mastery';
+const LADDER: Record<SessionFocus, SessionKind[]> = {
+  primes: ['open', 'farm', 'build', 'level'],
+  mastery: ['level', 'build', 'open', 'farm'],
+};
 
 export interface SessionRec {
   kind: SessionKind;
@@ -550,7 +608,7 @@ function listNames(names: string[], max = 3): string {
   return `${names.slice(0, max).join(', ')} y ${names.length - max} más`;
 }
 
-export function nextSession(progress: Progress): Session | null {
+export function nextSession(progress: Progress, focus: SessionFocus = 'primes'): Session | null {
   const targets = new Set(Object.keys(progress.targets).filter((k) => progress.targets[k]));
   const recs: SessionRec[] = [];
 
@@ -610,19 +668,47 @@ export function nextSession(progress: Progress): Session | null {
 
   const level = levelUpQueue(progress);
   if (level.length > 0) {
-    const g = level[0];
-    const rank = Math.min(progress.ranks[g.name] ?? 0, g.cap);
+    // Una sesión sube más de un arma. Entra lo que quepa en ~45 min, hasta
+    // tres ítems (lo que cabe en un título); lo que no cabe se salta y se
+    // sigue mirando, porque un warframe entero (40 min) no debe bloquear a
+    // dos armas cortas. La cola trae tus objetivos primero, así que si sigues
+    // algo, entra — y el primero entra siempre, aunque solo él llene la sesión.
+    const batch: MasteryItem[] = [];
+    let minutes = 0;
+    for (const g of level) {
+      if (batch.length >= 3) break;
+      const m = levelMinutes(g, progress);
+      if (batch.length > 0 && minutes + m > 45) continue;
+      batch.push(g);
+      minutes += m;
+    }
+    const xp = batch.reduce((s, g) => s + pendingXp(g, progress), 0);
+    const ranks = batch.map((g) => `${g.name} ${Math.min(progress.ranks[g.name] ?? 0, g.cap)}/${g.cap}`);
     recs.push({
       kind: 'level',
-      title: `Sube ${g.name} a rango ${g.cap}`,
-      why: rank > 0 ? `está en tu arsenal en rango ${rank}/${g.cap} — solo hay que jugarlo` : 'está en tu arsenal sin subir — solo hay que jugarlo',
-      effort: '~30 min',
-      value: `+${fmt(pendingXp(g, progress))} XP`,
-      forTarget: false,
+      title:
+        batch.length === 1 ? `Sube ${batch[0].name} a rango ${batch[0].cap}` : `Sube ${listNames(batch.map((g) => g.name))} a rango máximo`,
+      why: `${batch.length === 1 ? 'está' : 'están'} en tu arsenal sin llegar al tope (${listNames(ranks, 3)}) — solo hay que ${batch.length === 1 ? 'jugarlo' : 'jugarlos'}`,
+      effort: `~${Math.max(10, Math.round(minutes / 5) * 5)} min`,
+      value: `+${fmt(xp)} XP`,
+      forTarget: batch.some((g) => !!progress.targets[g.name]),
     });
   }
 
   if (recs.length === 0) return null;
-  const i = Math.max(0, recs.findIndex((r) => r.forTarget));
-  return { primary: recs[i], alternatives: recs.filter((_, k) => k !== i) };
+  const ordered = LADDER[focus].map((k) => recs.find((r) => r.kind === k)).filter((r): r is SessionRec => !!r);
+  const i = Math.max(0, ordered.findIndex((r) => r.forTarget));
+  return { primary: ordered[i], alternatives: ordered.filter((_, k) => k !== i) };
+}
+
+/**
+ * Minutos gruesos para subir lo que le falta a un ítem. Un warframe (200 XP
+ * por rango) tarda el doble que un arma en llegar al tope, y lo ya subido
+ * descuenta. «~25 min» no es una promesa: sirve para decidir cuántos entran
+ * en la sesión, no para cronometrarla.
+ */
+function levelMinutes(g: MasteryItem, progress: Progress): number {
+  const frameLike = g.xp / g.cap >= 200;
+  const fraction = pendingXp(g, progress) / Math.max(1, g.xp);
+  return Math.max(5, Math.round((frameLike ? 40 : 20) * fraction));
 }

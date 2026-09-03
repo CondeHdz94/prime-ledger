@@ -121,7 +121,10 @@ export interface Progress {
   ranks: Record<string, number>;
   /** relic inventory: "Lith S1" -> counts per refinement (from AlecaFrame import) */
   relics: Record<string, Partial<Record<Refinement, number>>>;
-  /** prime name -> lo estás cazando ahora (sección 00 del panel) */
+  /**
+   * nombre del ítem -> lo estás cazando ahora (sección 00 del panel). Primes
+   * y equipo normal comparten el mapa: la mira vive en Primes y en Maestría.
+   */
   targets: Record<string, boolean>;
   extras: Extras;
   history: HistoryEvent[];

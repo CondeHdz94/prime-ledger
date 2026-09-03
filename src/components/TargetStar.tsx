@@ -7,34 +7,35 @@ import { useStore } from '../lib/store';
 const TARGET = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 2v4M12 18v4M2 12h4M18 12h4';
 
 /**
- * Marca un prime como "lo estoy cazando ahora". Sale en la sección 00 del
- * panel con la ruta completa para conseguirlo. Solo icono en los cuatro
+ * Marca un ítem como "lo estoy cazando ahora". Un prime sale en la sección 00
+ * del panel con la ruta completa; un arma normal sale ahí con su rango, y
+ * gana el escalón «sube» de la próxima sesión. Solo icono en los cuatro
  * sitios (tarjeta, fila, cajón, sección 00): el mismo glifo se aprende una
  * vez, y donde todo está en la mira el texto sobraba. (El nombre del
  * componente y la clase `.star` son herencia del icono anterior.)
  */
 export function TargetStar({
-  primeName,
+  name,
   size = 16,
   className = '',
 }: {
-  primeName: string;
+  name: string;
   size?: number;
   className?: string;
 }) {
   const { progress, dispatch } = useStore();
-  const on = !!progress.targets[primeName];
+  const on = !!progress.targets[name];
 
   return (
     <button
       className={`star ${on ? 'is-on' : ''} ${className}`}
       onClick={(e) => {
         e.stopPropagation();
-        dispatch({ type: 'toggleTarget', primeName });
+        dispatch({ type: 'toggleTarget', name });
       }}
       aria-pressed={on}
-      title={on ? `Sacar ${primeName} de la mira` : `Poner ${primeName} en la mira`}
-      aria-label={on ? `Sacar ${primeName} de la mira` : `Cazar ${primeName}`}
+      title={on ? `Sacar ${name} de la mira` : `Poner ${name} en la mira`}
+      aria-label={on ? `Sacar ${name} de la mira` : `Cazar ${name}`}
     >
       <svg
         width={size}

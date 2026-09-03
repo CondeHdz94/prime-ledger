@@ -4,6 +4,7 @@ import { useStore } from '../lib/store';
 import { depLabel, levelUpQueue, pendingConsumers } from '../lib/selectors';
 import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { CatIcon, Icon } from '../components/Icon';
+import { TargetStar } from '../components/TargetStar';
 import type { Extras, MasteryItem } from '../types';
 
 const CAT_ORDER = [
@@ -236,24 +237,28 @@ export function Mastery() {
                     ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${progress.ranks[item.name] ?? 0}/${item.cap})`
                     : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`;
                   return (
-                    <button
-                      key={item.name}
-                      className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''} ${keep.length > 0 ? 'is-keep' : ''}`}
-                      onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
-                      title={[base, ...notes].join(' · ')}
-                      aria-pressed={on}
-                    >
-                      <span className="mi-check">{on && <Icon name="check" size={9} width={3} />}</span>
-                      <span className="mi-name">
-                        {item.name}
-                        {item.founders ? ' ✦' : ''}
-                      </span>
-                      {keep.length > 0 && <Icon name="hammer" size={13} width={1.9} className="mi-keep" />}
-                      <span className="mi-xp n">
-                        {item.cap > 30 ? `R${item.cap} ` : ''}
-                        {(item.xp / 1000).toFixed(0)}k
-                      </span>
-                    </button>
+                    // La mira va fuera del botón (un botón no puede contener otro)
+                    // y solo en lo pendiente: lo masterizado ya no se persigue.
+                    <div key={item.name} className={`mast-row ${progress.targets[item.name] ? 'is-target' : ''}`}>
+                      <button
+                        className={`mast-item ${on ? 'is-done' : ''} ${owned ? 'is-owned' : ''} ${keep.length > 0 ? 'is-keep' : ''}`}
+                        onClick={() => dispatch({ type: 'setMastered', itemName: item.name, mastered: !on })}
+                        title={[base, ...notes].join(' · ')}
+                        aria-pressed={on}
+                      >
+                        <span className="mi-check">{on && <Icon name="check" size={9} width={3} />}</span>
+                        <span className="mi-name">
+                          {item.name}
+                          {item.founders ? ' ✦' : ''}
+                        </span>
+                        {keep.length > 0 && <Icon name="hammer" size={13} width={1.9} className="mi-keep" />}
+                        <span className="mi-xp n">
+                          {item.cap > 30 ? `R${item.cap} ` : ''}
+                          {(item.xp / 1000).toFixed(0)}k
+                        </span>
+                      </button>
+                      {!on && !item.founders && <TargetStar name={item.name} size={13} className="mi-star" />}
+                    </div>
                   );
                 })}
               </div>
@@ -270,7 +275,8 @@ export function Mastery() {
             ? `Cada rango cuesta 2.500 × rango²; MR 30 son ${fmt(MR30_XP)}.`
             : 'Pasado MR 30 cada rango legendario cuesta 147.500 XP fijos.'}{' '}
           Los ítems con ✦ son de Founders y no cuentan como alcanzables. El martillo marca un arma que otro
-          crafteo pendiente consume como ingrediente: no la vendas hasta construirlo (detalle en el tooltip).
+          crafteo pendiente consume como ingrediente: no la vendas hasta construirlo (detalle en el tooltip). La mira
+          pone el ítem entre tus objetivos: sale en Hoy y manda en «Tu próxima sesión».
         </span>
       </div>
     </div>
