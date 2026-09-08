@@ -9,6 +9,7 @@ import type { HistoryEvent } from '../types';
 
 const KIND_ICON: Record<HistoryEvent['kind'], IconName> = {
   part: 'relic',
+  crafting: 'clock',
   built: 'hammer',
   mastered: 'mastery',
   unmastered: 'minus',

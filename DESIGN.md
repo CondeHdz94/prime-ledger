@@ -42,6 +42,11 @@ es semántica, no decorativa. Un color nuevo sin significado nuevo es un error.
 | `--blue` | `#8aa8e2` | **listo, sin usar** | 8,27 ✓ |
 | `--red` | `#c8705f` | **vault · fuera de alcance** | 5,59 ✓ |
 | `--mastery` | `#e6f3fa` | **estado terminal**: masterizado (blanco hielo del sigil del juego) | 17,48 ✓ |
+
+El estado «en construcción» no estrena color a propósito: mientras el crafteo
+cuece no hay nada que hacer y va en gris (`--text-dim`, como «pendiente» pero
+con filete); cuando el reloj termina sí es accionable —reclamarlo— y pasa a
+`--teal`, que ya significa exactamente eso.
 | `--rare` / `--uncommon` / `--common` | `#e8cd85` / `#b9c4d4` / `#b08d57` | rareza de reliquia | — |
 
 Contraste WCAG 2.1 calculado sobre `--void`; ✓ = pasa AA (≥ 4,5:1) para texto
@@ -147,10 +152,10 @@ Las clases van por familias con prefijo corto. Dónde vive cada una:
 | `gd-` / `res` / `hs-have` / `hstep--gear` | 1 / 5 / 2 / 1 | piezas y recursos de equipo normal (`GearDetail`, sección 00 de `Today`) |
 | `spark-` | 1 | la curva de XP (`History`) |
 
-Iconos: SVG inline en `components/Icon.tsx` — 17 paths (`relic`, `sync`,
+Iconos: SVG inline en `components/Icon.tsx` — 18 paths (`relic`, `sync`,
 `check`, `alert`, `info`, `chevron`, `arrow`, `search`, `plus`, `minus`,
-`close`, `hammer`, `star`, `note`, `down`, `up`, `mastery`). Añade el path ahí
-antes de meter un `<svg>` suelto en una vista.
+`close`, `hammer`, `star`, `note`, `down`, `up`, `mastery`, `clock`). Añade el
+path ahí antes de meter un `<svg>` suelto en una vista.
 
 ## Reglas
 

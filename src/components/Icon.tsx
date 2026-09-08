@@ -23,6 +23,8 @@ const PATHS = {
   /* mira: círculo y cuatro marcas que cruzan el borde — «en la mira» */
   target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 2v4M12 18v4M2 12h4M18 12h4',
   note: 'M5 4h14v16l-4-3H5Z M9 9h6M9 13h4',
+  /* reloj: el crafteo que aún cuece — esperar no es ni un ✓ ni una alerta */
+  clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 7.2V12l3.2 2',
   down: 'M12 4v13m0 0-5-5m5 5 5-5 M4 20h16',
   up: 'M12 20V7m0 0-5 5m5-5 5 5 M4 4h16',
   /* el sigil de maestría del juego: rombo sobre chevrones ascendentes */

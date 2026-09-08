@@ -41,7 +41,15 @@ colisionan). Cambiar esto es una migración, no un refactor.
 **`Progress` tiene versión (`v: 1`).** Añadir un campo obliga a rellenarlo en
 `load()` y en `importJson()` de `store.tsx`: hay guardados viejos en el
 navegador de la gente que no lo traen, y los lectores asumen que existe. Mira
-cómo entraron `relics`, `targets`, `ranks` y `resources`.
+cómo entraron `relics`, `targets`, `ranks`, `resources` y `crafting`.
+
+**Empezar un crafteo CONSUME las piezas.** Por eso existe `Progress.crafting`
+(nombre → instante en que sale del horno, 0 si lo marcaste a mano): sale de
+`PendingRecipes` del inventario, y sin él un prime en la fundición se ve
+idéntico a uno sin empezar —0/4 y «Pendiente»— y la app manda a farmear lo
+que ya pagaste. Toda lista de farmeo pasa por `pendingPrime()` en
+`selectors.ts`; el sync lo REEMPLAZA en vez de mezclarlo, porque lo que ya
+reclamaste tiene que desaparecer del mapa.
 
 **`Progress.resources` vacío significa «no sé», no «cero».** Se llena solo con
 el sync de AlecaFrame. `resourcesKnown()` (`selectors.ts`) guarda la puerta:

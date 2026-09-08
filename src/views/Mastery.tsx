@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CATEGORY_LABEL, MASTERY_GEAR } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { depLabel, levelUpQueue, pendingConsumers } from '../lib/selectors';
+import { craftLabel, craftState, depLabel, levelUpQueue, pendingConsumers } from '../lib/selectors';
 import { EXTRAS_XP, MR30_XP, extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
 import { CatIcon, Icon } from '../components/Icon';
 import { TargetStar } from '../components/TargetStar';
@@ -243,6 +243,8 @@ export function Mastery({ onOpen }: { onOpen: (name: string) => void }) {
                   const on = !!progress.mastered[item.name];
                   // lo tienes pero no lo has subido: XP a un rato de juego
                   const owned = !on && !!progress.built[item.name];
+                  // en el horno: ni lo tienes ni te falta farmear nada
+                  const oven = !on && !owned ? craftState(progress, item.name) : undefined;
                   // es ingrediente de un crafteo aún pendiente: no venderlo
                   const keep = pendingConsumers(item, progress);
                   const notes = [
@@ -252,7 +254,9 @@ export function Mastery({ onOpen }: { onOpen: (name: string) => void }) {
                   const rank = Math.min(progress.ranks[item.name] ?? 0, item.cap);
                   const base = owned
                     ? `${item.name} · lo tienes en el arsenal sin subir · ${fmt(pendingXp(item, progress))} XP por sacar (rango ${rank}/${item.cap})`
-                    : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`;
+                    : oven
+                      ? `${item.name} · ${craftLabel(oven).toLowerCase()} · ${fmt(item.xp)} XP`
+                      : `${item.name} · ${fmt(item.xp)} XP (rango ${item.cap})`;
                   return (
                     // Tres controles por fila, cada uno un botón propio (un botón
                     // no puede contener otro): la casilla marca masterizado, el
@@ -276,6 +280,7 @@ export function Mastery({ onOpen }: { onOpen: (name: string) => void }) {
                           {item.founders ? ' ✦' : ''}
                         </span>
                         {keep.length > 0 && <Icon name="hammer" size={13} width={1.9} className="mi-keep" />}
+                        {oven && <Icon name="clock" size={13} width={1.9} className={`mi-oven ${oven.done ? 'is-done' : ''}`} />}
                         {/* lo tuyo sin subir muestra el rango: es lo que decide si vale la pena */}
                         <span className="mi-xp n">
                           {owned ? `${rank}/${item.cap}` : `${item.cap > 30 ? `R${item.cap} ` : ''}${(item.xp / 1000).toFixed(0)}k`}
@@ -300,7 +305,8 @@ export function Mastery({ onOpen }: { onOpen: (name: string) => void }) {
             : 'Pasado MR 30 cada rango legendario cuesta 147.500 XP fijos.'}{' '}
           La casilla marca masterizado a mano; el nombre abre el detalle con piezas, fuentes y recursos. En teal, el
           rango de lo que tienes sin subir. Los ítems con ✦ son de Founders y no cuentan como alcanzables. El martillo
-          marca un arma que otro crafteo pendiente consume como ingrediente: no la vendas hasta construirlo. La mira pone
+          marca un arma que otro crafteo pendiente consume como ingrediente: no la vendas hasta construirlo. El reloj, un
+          crafteo en marcha en la fundición — en teal cuando ya terminó y solo falta reclamarlo. La mira pone
           el ítem entre tus objetivos: sale en Hoy y manda en «Tu próxima sesión».
         </span>
       </div>

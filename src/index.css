@@ -294,6 +294,10 @@ svg { display: block; }
 .badge--missing { color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--line); }
 /* missing + partial fusionados en la pestaña Primes */
 .badge--pending { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); }
+/* En la fundición: esperar no es un estado accionable, así que no gasta color.
+   Cuando el reloj termina sí lo es —hay que reclamarlo— y pasa a teal. */
+.badge--crafting { background: rgba(156, 152, 142, 0.12); color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--line-soft); }
+.badge--claim { background: var(--teal-glow); color: var(--teal); }
 .badge--vault { background: var(--red-glow); color: var(--red); }
 .badge--farm { background: var(--teal-glow); color: var(--teal); }
 

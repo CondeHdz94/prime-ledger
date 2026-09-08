@@ -22,6 +22,7 @@ export function SyncButton({ variant = 'compact' }: { variant?: 'compact' | 'ful
         `Inventario leído (MR en juego: ${s.mrInGame ?? '?'}).\n` +
           `· ${s.partsFound} piezas prime sueltas, ${s.gearPartsFound} de equipo normal\n` +
           `· ${s.primesBuilt} primes en tu arsenal\n` +
+          `· ${s.inFoundry} en la fundición, ${s.claimable} ya listos sin reclamar\n` +
           `· ${s.resourceKinds} recursos distintos con existencias\n` +
           `· ${s.gearOwned} ítems masterizables que ya tienes\n` +
           `· ${s.itemsMastered} ítems masterizados\n` +

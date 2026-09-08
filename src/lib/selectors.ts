@@ -1,16 +1,48 @@
 import type { BuildDep, Drop, GearPart, MasteryItem, Prime, PrimeComponent, Progress, Refinement, RelicRef, RelicSource } from '../types';
 import { MASTERY_GEAR, PRIMES, gearPartKey, partsNeeded, relicSources } from './gameData';
 import { fmt, pendingXp } from './mastery';
+import { untilWords } from './dates';
 
-export type PrimeStatus = 'mastered' | 'built' | 'ready' | 'partial' | 'missing';
+export type PrimeStatus = 'mastered' | 'built' | 'crafting' | 'ready' | 'partial' | 'missing';
 
 export const STATUS_LABEL: Record<PrimeStatus, string> = {
   mastered: 'Masterizado',
   built: 'Construido',
+  crafting: 'En construcción',
   ready: 'Piezas listas',
   partial: 'En progreso',
   missing: 'Faltante',
 };
+
+/**
+ * Lo que está en la fundición. `at` es cuándo sale (0 = lo marcaste a mano y
+ * no hay fecha), y `done` separa los dos momentos que no se parecen en nada:
+ * mientras cuece no hay nada que hacer, y cuando termina es maestría gratis
+ * esperando a que la reclames.
+ */
+export interface CraftState {
+  at: number;
+  done: boolean;
+}
+
+export function craftState(progress: Progress, name: string, now = Date.now()): CraftState | undefined {
+  const at = progress.crafting[name];
+  if (at === undefined) return undefined;
+  return { at, done: at > 0 && at <= now };
+}
+
+/** «Listo — reclámalo en la fundición» · «En la fundición · listo en 6 h». */
+export function craftLabel(c: CraftState, now = Date.now()): string {
+  if (c.done) return 'Listo — reclámalo en la fundición';
+  if (c.at === 0) return 'En la fundición';
+  return `En la fundición · listo en ${untilWords(c.at - now)}`;
+}
+
+/** Sigue habiendo algo que conseguir: ni masterizado, ni construido, ni en el
+ *  horno. Lo comparten todas las listas de farmeo — un prime crafteándose no
+ *  tiene piezas «faltantes», las tiene gastadas. */
+export const pendingPrime = (p: Prime, progress: Progress): boolean =>
+  !progress.mastered[p.name] && !progress.built[p.name] && progress.crafting[p.name] === undefined;
 
 export function ownedParts(p: Prime, progress: Progress): number {
   return p.components.reduce(
@@ -22,6 +54,9 @@ export function ownedParts(p: Prime, progress: Progress): number {
 export function primeStatus(p: Prime, progress: Progress): PrimeStatus {
   if (progress.mastered[p.name]) return 'mastered';
   if (progress.built[p.name]) return 'built';
+  // Antes que las piezas: el crafteo ya se las llevó, así que preguntar por
+  // ellas aquí devolvería «Faltante» para algo que está en el horno.
+  if (progress.crafting[p.name] !== undefined) return 'crafting';
   const owned = ownedParts(p, progress);
   if (owned >= partsNeeded(p) && p.components.length > 0) return 'ready';
   if (owned > 0) return 'partial';
@@ -54,11 +89,11 @@ export interface Acquisition {
  *  "farmeable" por mucho que sus reliquias sigan cayendo, y acumular sus
  *  reliquias no debería encenderle el filtro de inventario. */
 export function acquisition(p: Prime, progress: Progress): Acquisition {
-  // Construido o masterizado: al craftearlo las piezas se CONSUMEN, así que
-  // el inventario "ve" piezas faltantes en un prime que ya está en tu
-  // arsenal. Sin este corte contaba como farmeable/tradeable — no hay nada
-  // que conseguir de él.
-  if (progress.built[p.name] || progress.mastered[p.name]) {
+  // Construido, masterizado o en la fundición: al craftearlo las piezas se
+  // CONSUMEN, así que el inventario "ve" piezas faltantes en un prime que ya
+  // está en tu arsenal (o camino a él). Sin este corte contaba como
+  // farmeable/tradeable — no hay nada que conseguir de él.
+  if (progress.built[p.name] || progress.mastered[p.name] || progress.crafting[p.name] !== undefined) {
     return { farmableNow: false, hasRelics: false, tradeOnly: false };
   }
 
@@ -93,7 +128,7 @@ export interface FarmTarget {
 export function farmTargets(progress: Progress): FarmTarget[] {
   const out: FarmTarget[] = [];
   for (const p of PRIMES) {
-    if (p.founders || progress.mastered[p.name] || progress.built[p.name]) continue;
+    if (p.founders || !pendingPrime(p, progress)) continue;
     for (const c of p.components) {
       const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
       if (missing <= 0) continue;
@@ -119,6 +154,7 @@ export interface PrimeTally {
   total: number;
   mastered: number;
   built: number;
+  crafting: number;
   ready: number;
   partial: number;
   missing: number;
@@ -127,7 +163,7 @@ export interface PrimeTally {
 }
 
 export function tally(progress: Progress, includeFounders = false): PrimeTally {
-  const t: PrimeTally = { total: 0, mastered: 0, built: 0, ready: 0, partial: 0, missing: 0, partsOwned: 0, partsTotal: 0 };
+  const t: PrimeTally = { total: 0, mastered: 0, built: 0, crafting: 0, ready: 0, partial: 0, missing: 0, partsOwned: 0, partsTotal: 0 };
   for (const p of PRIMES) {
     if (p.founders && !includeFounders) continue;
     t.total++;
@@ -153,7 +189,7 @@ interface MissingPart {
 function missingParts(progress: Progress): MissingPart[] {
   const out: MissingPart[] = [];
   for (const p of PRIMES) {
-    if (p.founders || progress.mastered[p.name] || progress.built[p.name]) continue;
+    if (p.founders || !pendingPrime(p, progress)) continue;
     for (const c of p.components) {
       const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
       if (missing > 0) out.push({ prime: p, component: c, missing });
@@ -432,7 +468,10 @@ export function sourceLabel(src: RelicSource | undefined): string {
  * gastó) o masterizado, la advertencia sobra y desaparece sola.
  */
 export function pendingConsumers(item: MasteryItem | undefined, progress: Progress): BuildDep[] {
-  return (item?.usedIn ?? []).filter((u) => !progress.built[u.name] && !progress.mastered[u.name]);
+  return (item?.usedIn ?? []).filter(
+    // En la fundición cuenta como gastado: el crafteo ya se llevó el ingrediente.
+    (u) => !progress.built[u.name] && !progress.mastered[u.name] && progress.crafting[u.name] === undefined,
+  );
 }
 
 /** "Akbolto ×2, Hystrix" — texto corto de una lista de dependencias. */
@@ -550,7 +589,10 @@ export function huntList(progress: Progress): Hunt[] {
     const steps: HuntStep[] = [];
     const usable = new Set<string>();
 
-    for (const c of p.components) {
+    // Sin ruta para lo que ya no hay que conseguir: construido, masterizado o
+    // en el horno tienen las piezas GASTADAS, y listarlas como pendientes
+    // pintaba un farmeo completo debajo de «ya lo tienes».
+    for (const c of pendingPrime(p, progress) ? p.components : []) {
       const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
       if (missing <= 0) continue;
       const ref = bestRef(c, progress);
@@ -580,7 +622,7 @@ export function huntList(progress: Progress): Hunt[] {
 
   // Lo accionable arriba: construir ya > cerca de terminar > sin empezar >
   // masterizado (que solo sigue ahí porque no lo has quitado de la lista).
-  const rank: Record<PrimeStatus, number> = { ready: 0, built: 1, partial: 2, missing: 3, mastered: 4 };
+  const rank: Record<PrimeStatus, number> = { ready: 0, crafting: 1, built: 2, partial: 3, missing: 4, mastered: 5 };
   out.sort(
     (a, b) =>
       rank[a.status] - rank[b.status] ||
@@ -598,7 +640,7 @@ export function huntList(progress: Progress): Hunt[] {
  * del blueprint cuando no, y los recursos que faltan para craftearlo. Donde
  * el dato no existe la tarjeta calla en vez de inventar.
  */
-export type GearHuntStatus = 'missing' | 'levelling' | 'mastered';
+export type GearHuntStatus = 'missing' | 'crafting' | 'levelling' | 'mastered';
 
 export interface GearStep {
   part: GearPart;
@@ -638,7 +680,13 @@ export function gearHunts(progress: Progress): GearHunt[] {
   const out: GearHunt[] = [];
   for (const g of MASTERY_GEAR) {
     if (!progress.targets[g.name] || PRIME_NAMES.has(g.name)) continue;
-    const status: GearHuntStatus = progress.mastered[g.name] ? 'mastered' : progress.built[g.name] ? 'levelling' : 'missing';
+    const status: GearHuntStatus = progress.mastered[g.name]
+      ? 'mastered'
+      : progress.built[g.name]
+        ? 'levelling'
+        : progress.crafting[g.name] !== undefined
+          ? 'crafting'
+          : 'missing';
     out.push({
       item: g,
       status,
@@ -651,7 +699,7 @@ export function gearHunts(progress: Progress): GearHunt[] {
     });
   }
   // Lo jugable arriba: lo que ya tienes > lo que falta conseguir > masterizado.
-  const rank: Record<GearHuntStatus, number> = { levelling: 0, missing: 1, mastered: 2 };
+  const rank: Record<GearHuntStatus, number> = { levelling: 0, crafting: 1, missing: 2, mastered: 3 };
   out.sort((a, b) => rank[a.status] - rank[b.status] || b.pending - a.pending || a.item.name.localeCompare(b.item.name));
   return out;
 }

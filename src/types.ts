@@ -119,6 +119,7 @@ export interface GameData {
 
 export type HistoryKind =
   | 'part'
+  | 'crafting'
   | 'built'
   | 'mastered'
   | 'unmastered'
@@ -152,6 +153,15 @@ export interface Progress {
   parts: Record<string, number>;
   /** prime name -> built flag (crafted in foundry) */
   built: Record<string, boolean>;
+  /**
+   * nombre visible -> instante (ms) en que sale de la fundición; 0 si lo
+   * marcaste a mano y no hay fecha.
+   *
+   * Existe porque empezar un crafteo CONSUME las piezas: sin este mapa un
+   * prime en el horno se ve idéntico a uno sin empezar —0/4 y «Pendiente»—
+   * y la app te manda a farmear lo que ya pagaste.
+   */
+  crafting: Record<string, number>;
   /** item name -> mastered (rank cap reached). Single source for primes + all gear */
   mastered: Record<string, boolean>;
   /**
@@ -181,6 +191,7 @@ export const EMPTY_PROGRESS: Progress = {
   v: 1,
   parts: {},
   built: {},
+  crafting: {},
   mastered: {},
   ranks: {},
   relics: {},

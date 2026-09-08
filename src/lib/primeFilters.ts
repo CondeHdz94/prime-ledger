@@ -1,6 +1,6 @@
 import type { Prime, Progress } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
-import { acquisition, ownedParts, primeStatus, relicOwned } from './selectors';
+import { acquisition, craftLabel, craftState, ownedParts, primeStatus, relicOwned } from './selectors';
 import type { Acquisition, PrimeStatus } from './selectors';
 
 /**
@@ -21,7 +21,7 @@ export type Opt<T extends string> = { id: T; label: string; tone?: 'teal' | 'blu
  * pips, el «2/4» y el orden por progreso. `partial` sigue existiendo por
  * debajo: lo usan el orden por estado, la barra de Hoy y `tally()`.
  */
-export type EstadoKey = 'pending' | 'ready' | 'built' | 'mastered';
+export type EstadoKey = 'pending' | 'ready' | 'crafting' | 'built' | 'mastered';
 
 export const uiStatus = (st: PrimeStatus): EstadoKey =>
   st === 'missing' || st === 'partial' ? 'pending' : st;
@@ -30,6 +30,7 @@ export const uiStatus = (st: PrimeStatus): EstadoKey =>
 export const ESTADO_LABEL: Record<EstadoKey, string> = {
   pending: 'Pendiente',
   ready: 'Piezas listas',
+  crafting: 'En construcción',
   built: 'Construido',
   mastered: 'Masterizado',
 };
@@ -38,6 +39,7 @@ export const ESTADO_LABEL: Record<EstadoKey, string> = {
 export const ESTADOS: Opt<EstadoKey>[] = [
   { id: 'pending', label: 'Pendientes' },
   { id: 'ready', label: 'Piezas listas' },
+  { id: 'crafting', label: 'En construcción' },
   { id: 'built', label: 'Construidos' },
   { id: 'mastered', label: 'Masterizados' },
 ];
@@ -123,7 +125,13 @@ export const PRESETS: { id: PresetId; label: string; pred: (r: Row, progress: Pr
    * craftear parecían "faltantes"), así que ambos flags implican pendiente.
    */
   { id: 'reach', label: 'A mi alcance', pred: (r) => r.acq.farmableNow || r.acq.hasRelics },
-  { id: 'oneLeft', label: 'Falta 1 pieza', pred: (r) => r.total - r.owned === 1 && r.st !== 'built' && r.st !== 'mastered' },
+  {
+    id: 'oneLeft',
+    label: 'Falta 1 pieza',
+    // `crafting` fuera: sus piezas están gastadas, no faltando — un prime en el
+    // horno aparecía aquí como si le faltara la última.
+    pred: (r) => r.total - r.owned === 1 && r.st !== 'built' && r.st !== 'mastered' && r.st !== 'crafting',
+  },
   { id: 'ready', label: 'Piezas listas', pred: (r) => r.st === 'ready' },
   { id: 'targets', label: 'Mis objetivos', pred: (r, progress) => progress.targets[r.p.name] === true },
   { id: 'all', label: 'Todo', pred: () => true },
@@ -219,11 +227,11 @@ export const DEFAULT_SORT: Sort = { key: 'release', dir: 'desc' };
 /** Orden de progresión, el mismo del eje Estado: lo que ni has tocado primero.
  *  Sigue distinguiendo missing de partial aunque el filtro los fusione — la
  *  cercanía es información y aquí sí ordena. */
-const STATUS_RANK: Record<PrimeStatus, number> = { missing: 0, partial: 1, ready: 2, built: 3, mastered: 4 };
+const STATUS_RANK: Record<PrimeStatus, number> = { missing: 0, partial: 1, ready: 2, crafting: 3, built: 4, mastered: 5 };
 
 /** Orden de accionabilidad: lo farmeable primero, lo completo al final. */
 const acqRank = (r: Row): number => {
-  if (r.st === 'built' || r.st === 'mastered' || r.owned >= r.total) return 3;
+  if (r.st === 'built' || r.st === 'mastered' || r.st === 'crafting' || r.owned >= r.total) return 3;
   if (r.acq.farmableNow) return 0;
   if (r.acq.hasRelics) return 1;
   return 2;
@@ -264,6 +272,10 @@ export function nextStep(r: Row, progress: Progress): string {
   const xpTxt = xp > 0 ? ` · ${fmtN(xp)} XP` : '';
   if (st === 'mastered') return xp > 0 ? `${fmtN(xp)} XP ya contados` : 'Masterizado';
   if (st === 'built') return `Súbelo a rango tope${xpTxt}`;
+  if (st === 'crafting') {
+    const c = craftState(progress, p.name);
+    return c ? craftLabel(c) : 'En la fundición';
+  }
   if (st === 'ready') return `Constrúyelo${xpTxt}`;
 
   // Sin componentes en el catálogo (War, Verglas, Gotva y las armas de

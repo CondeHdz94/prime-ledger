@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { MasteryItem } from '../types';
 import { CATEGORY_LABEL, gearPartKey } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { PERISHABLE, acquireLabel, depLabel, gapLabel, gearSteps, pendingConsumers, resourceGaps, resourcesKnown } from '../lib/selectors';
+import { PERISHABLE, acquireLabel, craftState, depLabel, gapLabel, gearSteps, pendingConsumers, resourceGaps, resourcesKnown } from '../lib/selectors';
+import { untilWords } from '../lib/dates';
 import { fmt, pendingXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
@@ -32,7 +33,14 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
   const acquire = acquireLabel(item);
   const partsTotal = (item.parts ?? []).reduce((n, p) => n + p.count, 0);
   const partsOwned = partsTotal - steps.reduce((n, s) => n + s.missing, 0);
-  const crafting = !owned && !mastered && !item.founders;
+  // Congelado al abrir el cajón: la cuenta atrás se lee de un vistazo, no
+  // necesita un intervalo corriendo por detrás.
+  const [now] = useState(() => Date.now());
+  const oven = craftState(progress, item.name, now);
+  // `toBuild` = todavía hay que fabricarlo, y por eso la ruta (piezas,
+  // recursos) tiene sentido. Con el crafteo ya en marcha no: las piezas están
+  // gastadas y mostrarlas en 0 parecía un retroceso.
+  const toBuild = !owned && !mastered && !oven && !item.founders;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -41,7 +49,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
   }, [onClose]);
 
   let verdict: ReactNode;
-  let verdictIcon: 'check' | 'alert' | 'up' | 'info' = 'check';
+  let verdictIcon: 'check' | 'alert' | 'up' | 'info' | 'clock' = 'check';
   let verdictColor: string | undefined = 'var(--teal)';
   if (mastered) {
     verdict = 'Masterizado. No queda nada que hacer con este.';
@@ -56,6 +64,20 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
       <>
         En tu arsenal en rango {rank}/{item.cap}. Súbelo al tope y son{' '}
         <b className="n" style={{ color: 'var(--teal)' }}>{fmt(pendingXp(item, progress))} XP</b> de maestría.
+      </>
+    );
+  } else if (oven) {
+    verdictIcon = oven.done ? 'check' : 'clock';
+    verdictColor = oven.done ? 'var(--teal)' : undefined;
+    verdict = oven.done ? (
+      <>
+        Terminó en la fundición. Reclámalo y súbelo al tope:{' '}
+        <b className="n" style={{ color: 'var(--teal)' }}>{fmt(item.xp)} XP</b> de maestría.
+      </>
+    ) : (
+      <>
+        Se está construyendo{oven.at > 0 ? <> — sale en <b>{untilWords(oven.at - now)}</b></> : ''}. El
+        crafteo se llevó las piezas del inventario, por eso el conteo bajó: no te falta nada.
       </>
     );
   } else if (partsTotal > 0 && steps.length === 0) {
@@ -123,9 +145,16 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
           <section className="card card--inlay dw-sum">
             <div className="dw-sum-top">
               <div>
-                <span className="k">{owned || mastered ? 'Rango' : 'Piezas'}</span>
+                <span className="k">{owned || mastered ? 'Rango' : oven ? 'Fundición' : 'Piezas'}</span>
                 <div className="dw-count">
-                  {owned || mastered ? (
+                  {oven ? (
+                    <>
+                      <b className="n">—</b>
+                      <span className={`badge badge--${oven.done ? 'claim' : 'crafting'}`}>
+                        {oven.done ? 'listo, sin reclamar' : 'en construcción'}
+                      </span>
+                    </>
+                  ) : owned || mastered ? (
                     <>
                       <b className="n">{mastered ? item.cap : rank}</b>
                       <s className="n">/ {item.cap}</s>
@@ -149,7 +178,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
                   )}
                 </div>
               </div>
-              {crafting && partsTotal > 0 && (
+              {toBuild && partsTotal > 0 && (
                 <div className="pips dw-pips" aria-hidden>
                   {Array.from({ length: partsTotal }, (_, k) => (
                     <i key={k} className={k < partsOwned ? 'is-full' : ''} />
@@ -172,7 +201,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
                 </span>
               </div>
             )}
-            {crafting && needs.length > 0 && (
+            {toBuild && needs.length > 0 && (
               <div className="goal-note">
                 <Icon name="hammer" size={15} width={1.7} color="var(--gold)" />
                 <span>
@@ -196,7 +225,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
             </div>
           </section>
 
-          {crafting && (item.parts?.length ?? 0) > 0 && (
+          {toBuild && (item.parts?.length ?? 0) > 0 && (
             <div className="comp">
               <div className="comp-h">
                 <b>Piezas</b>
@@ -237,7 +266,7 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
             </div>
           )}
 
-          {crafting && (item.resources?.length ?? 0) > 0 && (
+          {toBuild && (item.resources?.length ?? 0) > 0 && (
             <div className="comp">
               <div className="comp-h">
                 <b>Recursos del crafteo</b>

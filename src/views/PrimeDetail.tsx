@@ -3,8 +3,9 @@ import type { ReactNode } from 'react';
 import type { Prime, PrimeComponent, Refinement, RelicRef } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, marketSetSlug, marketUrl, partsNeeded, relicSources } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { PERISHABLE, depLabel, gapLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, resourceGaps, resourcesKnown, sourceLabel, STATUS_LABEL } from '../lib/selectors';
+import { PERISHABLE, craftState, depLabel, gapLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, resourceGaps, resourcesKnown, sourceLabel, STATUS_LABEL } from '../lib/selectors';
 import { fmt } from '../lib/mastery';
+import { untilWords } from '../lib/dates';
 import { Icon } from '../components/Icon';
 import { PrimeArt } from '../components/PrimeArt';
 import { TargetStar } from '../components/TargetStar';
@@ -114,8 +115,14 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   // dependencias de crafteo: este prime se consume en otro, o consume a otro
   const keep = pendingConsumers(gearItem, progress);
   const needs = gearItem?.needs ?? [];
-  // recursos del crafteo: solo importan mientras no esté construido
-  const resources = !progress.built[prime.name] && !progress.mastered[prime.name] ? gearItem?.resources ?? [] : [];
+  // Congelado al abrir el cajón: la cuenta atrás de la fundición se lee de un
+  // vistazo («sale en 6 h»), no necesita un intervalo corriendo por detrás.
+  const [now] = useState(() => Date.now());
+  const craft = craftState(progress, prime.name, now);
+  // recursos del crafteo: solo importan mientras no esté construido ni en el
+  // horno — empezarlo ya los cobró.
+  const resources =
+    !progress.built[prime.name] && !progress.mastered[prime.name] && !craft ? gearItem?.resources ?? [] : [];
   const gaps = resourceGaps(gearItem, progress);
 
   useEffect(() => {
@@ -137,7 +144,7 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   }, [prime, progress]);
 
   let verdict: ReactNode;
-  let verdictIcon: 'check' | 'alert' = 'check';
+  let verdictIcon: 'check' | 'alert' | 'clock' = 'check';
   if (prime.components.length === 0) {
     verdict = 'Este prime no se obtiene por reliquias — es recompensa especial o de evento.';
   } else if (progress.mastered[prime.name]) {
@@ -147,6 +154,21 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
       <>
         Construido. Súbelo a rango máximo para reclamar{' '}
         <b className="n" style={{ color: 'var(--teal)' }}>{masteryXp ? fmt(masteryXp) : '—'} XP</b> de maestría.
+      </>
+    );
+  } else if (craft) {
+    // Las piezas ya no están en el inventario: el 0/4 de arriba es normal y
+    // hay que decirlo, o parece que el sync perdió lo que tanto costó.
+    verdictIcon = craft.done ? 'check' : 'clock';
+    verdict = craft.done ? (
+      <>
+        Terminó en la fundición. Reclámalo y súbelo a rango máximo:{' '}
+        <b className="n" style={{ color: 'var(--teal)' }}>{masteryXp ? fmt(masteryXp) : '—'} XP</b> de maestría.
+      </>
+    ) : (
+      <>
+        Se está construyendo{craft.at > 0 ? <> — sale en <b>{untilWords(craft.at - now)}</b></> : ''}. El
+        crafteo se llevó las piezas del inventario, por eso el conteo bajó: no te falta nada.
       </>
     );
   } else if (owned >= total) {
@@ -274,6 +296,12 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
             )}
 
             <div className="dw-acts">
+              <button
+                className={`chip ${craft ? 'is-on' : ''}`}
+                onClick={() => dispatch({ type: 'toggleCrafting', name: prime.name })}
+              >
+                {craft ? '✓ En construcción' : 'Marcar en construcción'}
+              </button>
               <button
                 className={`chip ${progress.built[prime.name] ? 'is-on' : ''}`}
                 onClick={() =>

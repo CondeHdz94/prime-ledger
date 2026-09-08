@@ -569,6 +569,9 @@
 .mast-row.is-owned .mi-xp { color: var(--teal); }
 /* ingrediente de un crafteo aún pendiente: no vender (el tooltip dice de cuál) */
 .mi-keep { color: var(--gold-bright); flex: none; filter: drop-shadow(0 0 3px var(--glow)); }
+/* el reloj de la fundición: apagado mientras cuece, teal cuando ya se reclama */
+.mi-oven { color: var(--text-faint); flex: none; }
+.mi-oven.is-done { color: var(--teal); }
 .mast-row.is-keep .mast-item { box-shadow: inset 2.5px 0 0 var(--gold); background: var(--glow); }
 .mast-row.is-keep .mast-item:hover { background: var(--surface-2); }
 /* fila = casilla + nombre (abre el cajón) + mira. La mira aparece al pasar

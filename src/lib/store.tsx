@@ -11,6 +11,7 @@ const LS_KEY = 'prime-tracker:v1';
 type Action =
   | { type: 'setPart'; fullName: string; owned: number; max: number; primeName: string }
   | { type: 'setBuilt'; primeName: string; built: boolean }
+  | { type: 'toggleCrafting'; name: string }
   | { type: 'setMastered'; itemName: string; mastered: boolean }
   | { type: 'toggleTarget'; name: string }
   | { type: 'setExtra'; key: keyof Extras; value: number }
@@ -49,12 +50,29 @@ function reducer(state: Progress, action: Action): Progress {
     }
     case 'setBuilt': {
       if (!!state.built[action.primeName] === action.built) return state;
+      // Marcarlo construido es reclamarlo: sale del horno solo, sin que haya
+      // que apagar dos interruptores para describir un único estado.
+      const crafting = { ...state.crafting };
+      delete crafting[action.primeName];
       return {
         ...state,
         built: { ...state.built, [action.primeName]: action.built },
+        crafting,
         history: action.built
           ? [...state.history, ev('built', `Construido: ${action.primeName}`)]
           : state.history,
+      };
+    }
+    case 'toggleCrafting': {
+      const crafting = { ...state.crafting };
+      const on = crafting[action.name] === undefined;
+      // 0 = sin fecha: a mano no se sabe cuándo sale, y el sync la traerá.
+      if (on) crafting[action.name] = 0;
+      else delete crafting[action.name];
+      return {
+        ...state,
+        crafting,
+        history: on ? [...state.history, ev('crafting', `En la fundición: ${action.name}`)] : state.history,
       };
     }
     case 'setMastered': {
@@ -106,6 +124,10 @@ function reducer(state: Progress, action: Action): Progress {
         ...state,
         parts: patch.parts,
         built: { ...state.built, ...patch.built },
+        // Reemplazo, no mezcla: PendingRecipes es la fundición entera, así que
+        // lo que ya reclamaste tiene que desaparecer del mapa. Mezclar dejaba
+        // «En construcción» pegado para siempre.
+        crafting: patch.crafting,
         mastered,
         ranks: patch.ranks,
         relics: patch.relics,
@@ -118,6 +140,7 @@ function reducer(state: Progress, action: Action): Progress {
             // nada desde el juego, así que no cuenta como sincronización.
             'sync',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
+              `${summary.inFoundry} en la fundición (${summary.claimable} sin reclamar), ` +
               `${summary.itemsMastered} ítems masterizados, ${summary.itemsPartial} a medio subir, ` +
               `${summary.relicCount} reliquias, ${summary.resourceKinds} recursos` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),
@@ -143,9 +166,9 @@ function load(): Progress {
     if (!raw) return EMPTY_PROGRESS;
     const parsed = JSON.parse(raw) as Progress;
     if (parsed.v !== 1) return EMPTY_PROGRESS;
-    // `targets`, `relics`, `ranks` y `resources` llegaron después: un guardado
-    // viejo (o un respaldo editado a mano) no los trae y los lectores asumen
-    // que son objetos.
+    // `targets`, `relics`, `ranks`, `resources` y `crafting` llegaron después:
+    // un guardado viejo (o un respaldo editado a mano) no los trae y los
+    // lectores asumen que son objetos.
     return {
       ...EMPTY_PROGRESS,
       ...parsed,
@@ -153,6 +176,7 @@ function load(): Progress {
       targets: parsed.targets ?? {},
       ranks: parsed.ranks ?? {},
       resources: parsed.resources ?? {},
+      crafting: parsed.crafting ?? {},
       extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
     };
   } catch {
@@ -203,6 +227,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             targets: parsed.targets ?? {},
             ranks: parsed.ranks ?? {},
             resources: parsed.resources ?? {},
+            crafting: parsed.crafting ?? {},
             extras: { ...EMPTY_PROGRESS.extras, ...parsed.extras },
           },
         });

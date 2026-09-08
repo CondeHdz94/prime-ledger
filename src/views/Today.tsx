@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { aggregateGaps, buildReady, farmByMission, farmTargets, gapLabel, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, resourceGaps, sourceLabel, tally } from '../lib/selectors';
+import { aggregateGaps, buildReady, craftState, farmByMission, farmTargets, gapLabel, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, resourceGaps, sourceLabel, tally } from '../lib/selectors';
+import { untilWords } from '../lib/dates';
 import type { SessionFocus, SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
 import { extrasXp, fmt, gearXp, mrGoal, mrLabel, pendingXp, remainingGearXp, totalXp } from '../lib/mastery';
@@ -166,7 +167,10 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
   const { mr, legendary, goal, goalXp, toGoal, pct, chasingMr30 } = mrGoal(xp);
   const remaining = remainingGearXp(progress);
 
-  const collDone = t.mastered + t.built + t.ready;
+  // Lo que ya no hay que farmear: masterizado, construido, en el horno o con
+  // todas las piezas en el bolsillo. Sin `crafting`, empezar un crafteo hacía
+  // BAJAR el porcentaje de la colección.
+  const collDone = t.mastered + t.built + t.crafting + t.ready;
   const openParts = openable.reduce((n, r) => n + r.yields.length, 0);
   const buildXp = builds.reduce((n, b) => n + b.xp, 0);
   const levelUpXp = levelUp.reduce((n, g) => n + pendingXp(g, progress), 0);
@@ -203,6 +207,8 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
   const segs = [
     { label: 'Masterizados', n: t.mastered, c: 'var(--gold)' },
     { label: 'Construidos', n: t.built, c: 'var(--teal)' },
+    // Teal apagado: va a ser «construido», todavía no lo es.
+    { label: 'En construcción', n: t.crafting, c: 'color-mix(in oklab, var(--teal) 52%, #23232b)' },
     { label: 'Piezas listas', n: t.ready, c: 'var(--blue)' },
     { label: 'En progreso', n: t.partial, c: '#4a4a55' },
     { label: 'Faltantes', n: t.missing, c: '#24242c' },
@@ -352,6 +358,27 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
                         <b className="n">{h.xp ? fmt(h.xp) : '—'} XP</b>.
                       </span>
                     </>
+                  ) : h.status === 'crafting' ? (
+                    (() => {
+                      const c = craftState(progress, h.prime.name);
+                      return (
+                        <>
+                          <Icon name={c?.done ? 'check' : 'clock'} size={14} width={1.8} color={c?.done ? 'var(--teal)' : undefined} />
+                          <span>
+                            {c?.done ? (
+                              <>
+                                Terminó en la fundición — reclámalo y son <b className="n">{fmt(h.xp)} XP</b> por subir.
+                              </>
+                            ) : (
+                              <>
+                                Se está construyendo{c && c.at > 0 ? ` — sale en ${untilWords(c.at - now)}` : ''}. El crafteo
+                                se llevó las piezas del inventario: no te falta nada.
+                              </>
+                            )}
+                          </span>
+                        </>
+                      );
+                    })()
                   ) : h.status === 'ready' ? (
                     (() => {
                       const gaps = resourceGaps(MASTERY_GEAR.find((g) => g.name === h.prime.name), progress);
@@ -474,6 +501,26 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
                         En tu arsenal en rango {h.rank}/{h.item.cap} — súbelo y son <b className="n">{fmt(h.pending)} XP</b>.
                       </span>
                     </>
+                  ) : h.status === 'crafting' ? (
+                    (() => {
+                      const c = craftState(progress, h.item.name);
+                      return (
+                        <>
+                          <Icon name={c?.done ? 'check' : 'clock'} size={14} width={1.8} color={c?.done ? 'var(--teal)' : undefined} />
+                          <span>
+                            {c?.done ? (
+                              <>
+                                Terminó en la fundición — reclámalo y son <b className="n">{fmt(h.item.xp)} XP</b> por subir.
+                              </>
+                            ) : (
+                              <>
+                                Se está construyendo{c && c.at > 0 ? ` — sale en ${untilWords(c.at - now)}` : ''}. No te falta nada.
+                              </>
+                            )}
+                          </span>
+                        </>
+                      );
+                    })()
                   ) : h.steps.length === 0 && (h.item.parts?.length ?? 0) > 0 ? (
                     h.gaps.length > 0 ? (
                       <>

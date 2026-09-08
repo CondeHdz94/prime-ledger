@@ -14,6 +14,8 @@ const KEY = new TextEncoder().encode('LEO-ALEC\tEO-ALEC');
 const IV = new Uint8Array([49, 50, 70, 71, 66, 51, 54, 45, 76, 69, 51, 45, 113, 61, 57, 0]);
 
 interface CountedItem { ItemType: string; ItemCount?: number }
+/** Un crafteo en marcha. La fecha viene envuelta al estilo Mongo de DE. */
+interface PendingRecipe { ItemType: string; CompletionDate?: { $date?: { $numberLong?: string } } }
 interface XpEntry { ItemType: string; XP: number }
 interface MissionEntry { Tag: string; Tier?: number }
 
@@ -21,6 +23,7 @@ interface DeInventory {
   PlayerLevel?: number;
   MiscItems?: CountedItem[];
   Recipes?: CountedItem[];
+  PendingRecipes?: PendingRecipe[];
   XPInfo?: XpEntry[];
   Missions?: MissionEntry[];
   PlayerSkills?: Record<string, number>;
@@ -28,7 +31,7 @@ interface DeInventory {
 }
 
 export interface AlecaImportResult {
-  patch: Pick<Progress, 'parts' | 'built' | 'mastered' | 'relics' | 'ranks' | 'resources'> & { extras: Extras };
+  patch: Pick<Progress, 'parts' | 'built' | 'crafting' | 'mastered' | 'relics' | 'ranks' | 'resources'> & { extras: Extras };
   summary: {
     mrInGame?: number;
     /** piezas prime sueltas */
@@ -38,6 +41,10 @@ export interface AlecaImportResult {
     /** recursos distintos con existencias */
     resourceKinds: number;
     primesBuilt: number;
+    /** crafteos en la fundición ahora mismo, primes y equipo normal */
+    inFoundry: number;
+    /** de esos, los que ya terminaron y están sin reclamar */
+    claimable: number;
     /** ítems masterizables que ya están en tu arsenal */
     gearOwned: number;
     itemsMastered: number;
@@ -155,6 +162,35 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   }
   const gearOwned = Object.keys(built).length;
 
+  // En la fundición ---------------------------------------------------------
+  // Al empezar un crafteo el juego se lleva las piezas del inventario, así que
+  // sin leer PendingRecipes el ítem cae al estado de quien no ha empezado:
+  // 0 piezas y «Pendiente». Se indexa solo el blueprint del ítem final, que es
+  // el que cambia de estado: una PIEZA de equipo normal también puede estar en
+  // el horno (el Chassis de un warframe), pero eso no saca al ítem de «te
+  // falta», solo mueve dónde está esa pieza.
+  const recipeOf = new Map<string, string>();
+  for (const p of PRIMES) {
+    const bp = p.components.find((c) => c.name === 'Blueprint');
+    if (bp?.un) recipeOf.set(bp.un, p.name);
+  }
+  for (const g of MASTERY_GEAR) {
+    const bp = g.parts?.find((part) => part.name === 'Blueprint');
+    if (bp?.un && !recipeOf.has(bp.un)) recipeOf.set(bp.un, g.name);
+  }
+  const crafting: Record<string, number> = {};
+  let claimable = 0;
+  const now = Date.now();
+  for (const r of inv.PendingRecipes ?? []) {
+    const name = recipeOf.get(r.ItemType);
+    // Fuera del catálogo (consumibles, ADN de mascota) o ya en el arsenal: en
+    // el segundo caso el del horno es un repuesto y no cambia lo que te falta.
+    if (!name || built[name]) continue;
+    const at = Number(r.CompletionDate?.$date?.$numberLong ?? 0);
+    crafting[name] = Number.isFinite(at) ? at : 0;
+    if (at > 0 && at <= now) claimable++;
+  }
+
   const mastered: Record<string, boolean> = {};
   const ranks: Record<string, number> = {};
   let itemsMastered = 0;
@@ -239,13 +275,15 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   };
 
   return {
-    patch: { parts, built, mastered, ranks, relics, resources, extras },
+    patch: { parts, built, crafting, mastered, ranks, relics, resources, extras },
     summary: {
       mrInGame: inv.PlayerLevel,
       partsFound,
       gearPartsFound,
       resourceKinds: Object.keys(resources).length,
       primesBuilt,
+      inFoundry: Object.keys(crafting).length,
+      claimable,
       gearOwned,
       itemsMastered,
       itemsPartial,

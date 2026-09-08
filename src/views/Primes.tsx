@@ -39,11 +39,12 @@ const GROUP_LABEL: Record<Group, string> = { estado: 'Estado', consigo: 'Consigo
  * quede algo pendiente manda tu inventario real — una reliquia tuya vale
  * aunque el prime esté vaulteado. Ya completo, el badge responde otra
  * pregunta — "¿sigue cayendo?" — porque "Farmeable" solo le sirve a quien
- * aún no lo tiene.
+ * aún no lo tiene. En la fundición cuenta como completo: las piezas están
+ * gastadas, no faltando.
  */
 function AcqBadge({ row }: { row: Row }) {
   const { p, st, acq, owned, total } = row;
-  const pending = st !== 'mastered' && st !== 'built' && owned < total;
+  const pending = st !== 'mastered' && st !== 'built' && st !== 'crafting' && owned < total;
   if (!pending) {
     return <span className={`badge badge--${p.farmable ? 'farm' : 'vault'}`}>{p.farmable ? 'Sigue cayendo' : 'Vault'}</span>;
   }
