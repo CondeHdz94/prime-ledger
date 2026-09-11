@@ -160,6 +160,13 @@ export interface Progress {
    * Existe porque empezar un crafteo CONSUME las piezas: sin este mapa un
    * prime en el horno se ve idéntico a uno sin empezar —0/4 y «Pendiente»—
    * y la app te manda a farmear lo que ya pagaste.
+   *
+   * Mezcla a propósito ítems enteros y PIEZAS sueltas (la clave de una pieza
+   * es su fullName, «Nezha Prime Chassis», que nunca choca con el nombre de
+   * un ítem): una parte de warframe se craftea aparte, con su propio timer, y
+   * mientras cuece está igual de fuera del inventario que el ítem entero.
+   * Guarda un instante por nombre, no cantidades: dos copias de la misma
+   * pieza en el horno cuentan como una.
    */
   crafting: Record<string, number>;
   /** item name -> mastered (rank cap reached). Single source for primes + all gear */

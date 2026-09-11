@@ -41,10 +41,12 @@ export interface AlecaImportResult {
     /** recursos distintos con existencias */
     resourceKinds: number;
     primesBuilt: number;
-    /** crafteos en la fundición ahora mismo, primes y equipo normal */
+    /** en la fundición ahora mismo: ítems enteros y piezas sueltas */
     inFoundry: number;
-    /** de esos, los que ya terminaron y están sin reclamar */
+    /** de eso, lo que ya terminó y está sin reclamar */
     claimable: number;
+    /** cuánto de `inFoundry` son piezas de un ítem, no el ítem entero */
+    ovenParts: number;
     /** ítems masterizables que ya están en tu arsenal */
     gearOwned: number;
     itemsMastered: number;
@@ -165,10 +167,14 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
   // En la fundición ---------------------------------------------------------
   // Al empezar un crafteo el juego se lleva las piezas del inventario, así que
   // sin leer PendingRecipes el ítem cae al estado de quien no ha empezado:
-  // 0 piezas y «Pendiente». Se indexa solo el blueprint del ítem final, que es
-  // el que cambia de estado: una PIEZA de equipo normal también puede estar en
-  // el horno (el Chassis de un warframe), pero eso no saca al ítem de «te
-  // falta», solo mueve dónde está esa pieza.
+  // 0 piezas y «Pendiente».
+  //
+  // Se indexan dos cosas distintas con el mismo mapa de salida:
+  // el blueprint del ÍTEM final (cambia el estado del ítem entero) y el de
+  // cada PIEZA (el Chassis de un warframe se craftea aparte, con su propio
+  // timer). La pieza importa tanto como el ítem: mientras cuece no está ni en
+  // Recipes ni en MiscItems, así que sin leerla la app contaba cero y mandaba
+  // a farmear otra vez algo que ya estaba pagado y en el horno.
   const recipeOf = new Map<string, string>();
   for (const p of PRIMES) {
     const bp = p.components.find((c) => c.name === 'Blueprint');
@@ -178,17 +184,50 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
     const bp = g.parts?.find((part) => part.name === 'Blueprint');
     if (bp?.un && !recipeOf.has(bp.un)) recipeOf.set(bp.un, g.name);
   }
+  // Piezas: el catálogo las nombra por su forma construida
+  // (…ChassisComponent) y PendingRecipes por su receta (…ChassisBlueprint),
+  // así que se registran las dos variantes. Nunca pisan al ítem final: la
+  // pieza «Blueprint» ES el ítem y por eso queda fuera de este mapa.
+  const partRecipeOf = new Map<string, { key: string; count: number }>();
+  const addPart = (un: string | undefined, key: string, count: number) => {
+    if (!un) return;
+    for (const v of new Set([un, un.replace(/Component$/, 'Blueprint')])) {
+      if (!recipeOf.has(v) && !partRecipeOf.has(v)) partRecipeOf.set(v, { key, count });
+    }
+  };
+  for (const p of PRIMES) {
+    for (const c of p.components) if (c.name !== 'Blueprint') addPart(c.un, c.fullName, c.count);
+  }
+  for (const g of MASTERY_GEAR) {
+    for (const part of g.parts ?? []) if (part.name !== 'Blueprint') addPart(part.un, gearPartKey(g, part), part.count);
+  }
   const crafting: Record<string, number> = {};
   let claimable = 0;
+  let ovenParts = 0;
   const now = Date.now();
   for (const r of inv.PendingRecipes ?? []) {
-    const name = recipeOf.get(r.ItemType);
-    // Fuera del catálogo (consumibles, ADN de mascota) o ya en el arsenal: en
-    // el segundo caso el del horno es un repuesto y no cambia lo que te falta.
-    if (!name || built[name]) continue;
     const at = Number(r.CompletionDate?.$date?.$numberLong ?? 0);
-    crafting[name] = Number.isFinite(at) ? at : 0;
-    if (at > 0 && at <= now) claimable++;
+    const when = Number.isFinite(at) ? at : 0;
+    const ready = when > 0 && when <= now;
+    const name = recipeOf.get(r.ItemType);
+    if (name) {
+      // Ya en el arsenal: el del horno es un repuesto y no cambia lo que te falta.
+      if (built[name]) continue;
+      crafting[name] = when;
+      if (ready) claimable++;
+      continue;
+    }
+    const part = partRecipeOf.get(r.ItemType);
+    // Fuera del catálogo: consumibles, ADN de mascota, Forma.
+    if (!part) continue;
+    // Con la pieza ya completa en el inventario, la del horno es un repuesto.
+    // Y dos copias de la misma pieza cociéndose se cuentan como una: el mapa
+    // guarda un instante por nombre, no cantidades. Quedarse corto («aún te
+    // falta una») es preferible a inventarse la segunda.
+    if ((parts[part.key] ?? 0) >= part.count || crafting[part.key] !== undefined) continue;
+    crafting[part.key] = when;
+    ovenParts++;
+    if (ready) claimable++;
   }
 
   const mastered: Record<string, boolean> = {};
@@ -284,6 +323,7 @@ function buildPatch(inv: DeInventory): AlecaImportResult {
       primesBuilt,
       inFoundry: Object.keys(crafting).length,
       claimable,
+      ovenParts,
       gearOwned,
       itemsMastered,
       itemsPartial,

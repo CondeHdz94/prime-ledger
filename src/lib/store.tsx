@@ -140,7 +140,7 @@ function reducer(state: Progress, action: Action): Progress {
             // nada desde el juego, así que no cuenta como sincronización.
             'sync',
             `Import AlecaFrame: ${summary.partsFound} piezas, ${summary.primesBuilt} primes construidos, ` +
-              `${summary.inFoundry} en la fundición (${summary.claimable} sin reclamar), ` +
+              `${summary.inFoundry} en la fundición (${summary.claimable} sin reclamar${summary.ovenParts > 0 ? `, ${summary.ovenParts} piezas sueltas` : ""}), ` +
               `${summary.itemsMastered} ítems masterizados, ${summary.itemsPartial} a medio subir, ` +
               `${summary.relicCount} reliquias, ${summary.resourceKinds} recursos` +
               (summary.mrInGame !== undefined ? ` (MR en juego: ${summary.mrInGame})` : ''),

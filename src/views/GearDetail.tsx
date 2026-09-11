@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { MasteryItem } from '../types';
 import { CATEGORY_LABEL, gearPartKey } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { PERISHABLE, acquireLabel, craftState, depLabel, gapLabel, gearSteps, pendingConsumers, resourceGaps, resourcesKnown } from '../lib/selectors';
+import { PERISHABLE, acquireLabel, craftState, depLabel, gapLabel, gearOven, gearSteps, pendingConsumers, resourceGaps, resourcesKnown } from '../lib/selectors';
 import { untilWords } from '../lib/dates';
 import { fmt, pendingXp } from '../lib/mastery';
 import { Icon } from '../components/Icon';
@@ -36,7 +36,13 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
   // Congelado al abrir el cajón: la cuenta atrás se lee de un vistazo, no
   // necesita un intervalo corriendo por detrás.
   const [now] = useState(() => Date.now());
-  const oven = craftState(progress, item.name, now);
+  const selfOven = craftState(progress, item.name, now);
+  // Un warframe se arma por partes y cada parte se cuece aparte: con TODAS las
+  // que faltaban en el horno el ítem está tan en la fundición como si cociera
+  // entero. Con sólo algunas, no — las otras siguen habiendo que conseguirlas,
+  // y ahí la ruta tiene que seguir viéndose.
+  const partsOven = gearOven(item, progress, now);
+  const oven = selfOven ?? (steps.length === 0 && partsTotal > 0 ? partsOven : undefined);
   // `toBuild` = todavía hay que fabricarlo, y por eso la ruta (piezas,
   // recursos) tiene sentido. Con el crafteo ya en marcha no: las piezas están
   // gastadas y mostrarlas en 0 parecía un retroceso.
@@ -76,7 +82,8 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
       </>
     ) : (
       <>
-        Se está construyendo{oven.at > 0 ? <> — sale en <b>{untilWords(oven.at - now)}</b></> : ''}. El
+        {selfOven ? 'Se está construyendo' : 'Sus piezas se están construyendo'}
+        {oven.at > 0 ? <> — sale{selfOven ? '' : ' la última'} en <b>{untilWords(oven.at - now)}</b></> : ''}. El
         crafteo se llevó las piezas del inventario, por eso el conteo bajó: no te falta nada.
       </>
     );
@@ -234,12 +241,20 @@ export function GearDetail({ item, onClose }: { item: MasteryItem; onClose: () =
               <div className="gd-list">
                 {item.parts!.map((p) => {
                   const have = Math.min(progress.parts[gearPartKey(item, p)] ?? 0, p.count);
+                  // La pieza que cuece no está en el inventario y su 0/1 se lee
+                  // como farmeo pendiente: se marca como tuya, que es lo que es.
+                  const partOven = craftState(progress, gearPartKey(item, p), now);
                   const drop = p.drops?.[0];
                   return (
-                    <div key={p.name} className={`hstep hstep--gear ${have >= p.count ? 'is-mine' : ''}`}>
+                    <div key={p.name} className={`hstep hstep--gear ${have >= p.count || partOven ? 'is-mine' : ''}`}>
                       <span className="hs-part">
                         {p.name}
                         {p.count > 1 && <em className="n"> ×{p.count}</em>}
+                        {partOven && (
+                          <span className={`badge badge--${partOven.done ? 'claim' : 'crafting'}`}>
+                            {partOven.done ? 'listo, sin reclamar' : 'en el horno'}
+                          </span>
+                        )}
                       </span>
                       <span className={`hs-have n ${have >= p.count ? 'is-ok' : ''}`}>
                         {have} / {p.count}

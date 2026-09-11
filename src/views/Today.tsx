@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../lib/store';
-import { aggregateGaps, buildReady, craftState, farmByMission, farmTargets, gapLabel, gearHunts, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, resourceGaps, sourceLabel, tally } from '../lib/selectors';
+import { aggregateGaps, buildReady, claimReady, farmByMission, farmTargets, gapLabel, gearHunts, gearOven, huntList, levelUpQueue, masteredRecently, nextSession, openableRelics, primeOven, resourceGaps, sourceLabel, tally } from '../lib/selectors';
 import { untilWords } from '../lib/dates';
 import type { SessionFocus, SessionKind } from '../lib/selectors';
 import { CATEGORY_LABEL, MASTERY_GEAR, relicSources } from '../lib/gameData';
@@ -38,17 +38,17 @@ function countdown(ms: number): string {
    Cada sección se pliega a su cabecera con el conteo. Lo que abras o cierres
    se queda entre visitas — preferencia desechable, como los filtros de
    Primes. */
-type SectId = 'next' | 'targets' | 'open' | 'farm' | 'build' | 'level' | 'xp';
-const SECTS: SectId[] = ['next', 'targets', 'open', 'farm', 'build', 'level', 'xp'];
+type SectId = 'next' | 'targets' | 'claim' | 'open' | 'farm' | 'build' | 'level' | 'xp';
+const SECTS: SectId[] = ['next', 'targets', 'claim', 'open', 'farm', 'build', 'level', 'xp'];
 const LS_SECTS = 'prime-tracker:hoy-open';
 /** Sin preferencia guardada: en escritorio abiertas las que se consultan a
  *  diario; «sube de rango» (12 filas que ya viven en Maestría) y el desglose,
  *  plegadas. En móvil casi todo plegado — ahí manda el largo del scroll. */
 const defaultOpen = (): SectId[] =>
   typeof matchMedia === 'function' && matchMedia('(min-width: 860px)').matches
-    ? ['next', 'targets', 'open', 'farm', 'build']
-    : ['next', 'targets'];
-const SECT_OF: Record<SessionKind, SectId> = { open: 'open', farm: 'farm', build: 'build', level: 'level' };
+    ? ['next', 'targets', 'claim', 'open', 'farm', 'build']
+    : ['next', 'targets', 'claim'];
+const SECT_OF: Record<SessionKind, SectId> = { claim: 'claim', open: 'open', farm: 'farm', build: 'build', level: 'level' };
 
 /** Foco de la próxima sesión. Se guarda aparte de las secciones plegadas
  *  porque cambia la recomendación, no la vista; y es tan desechable como
@@ -61,7 +61,7 @@ function loadFocus(): SessionFocus {
     return 'primes';
   }
 }
-const ICON_OF: Record<SessionKind, IconName> = { open: 'relic', farm: 'arrow', build: 'hammer', level: 'up' };
+const ICON_OF: Record<SessionKind, IconName> = { claim: 'check', open: 'relic', farm: 'arrow', build: 'hammer', level: 'up' };
 
 function loadOpenSects(): Set<SectId> {
   try {
@@ -146,6 +146,11 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
   // registro, así que aguanta recargas, y se retira solo pasada la gracia.
   const [now, setNow] = useState(() => Date.now());
   const levelledRecent = useMemo(() => masteredRecently(progress, now), [progress, now]);
+  // Lo cocinado y sin reclamar: el escalón más barato de la escalera. Cuelga
+  // del reloj de la vista porque un crafteo termina solo, sin que nadie toque
+  // nada — y con la app abierta el estado cambia bajo los pies.
+  const claims = useMemo(() => claimReady(progress, now), [progress, now]);
+  const claimXp = claims.reduce((n, c) => n + c.xp, 0);
   // El reloj solo corre mientras haya algo tachado esperando salir: sin checks
   // no hay nada que contar y un intervalo por segundo sería puro desperdicio.
   const ticking = levelledRecent.size > 0;
@@ -360,7 +365,7 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
                     </>
                   ) : h.status === 'crafting' ? (
                     (() => {
-                      const c = craftState(progress, h.prime.name);
+                      const c = primeOven(h.prime, progress, now);
                       return (
                         <>
                           <Icon name={c?.done ? 'check' : 'clock'} size={14} width={1.8} color={c?.done ? 'var(--teal)' : undefined} />
@@ -503,7 +508,7 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
                     </>
                   ) : h.status === 'crafting' ? (
                     (() => {
-                      const c = craftState(progress, h.item.name);
+                      const c = gearOven(h.item, progress, now);
                       return (
                         <>
                           <Icon name={c?.done ? 'check' : 'clock'} size={14} width={1.8} color={c?.done ? 'var(--teal)' : undefined} />
@@ -658,6 +663,63 @@ export function Today({ onOpenItem }: { onOpenItem: (name: string) => void }) {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {/* ── 00 · reclama lo que ya está hecho ──────────────────
+          Va antes que «abre» y no rompe el orden por esfuerzo: lo es. Cuesta
+          cero partidas y la maestría ya está pagada. Sólo aparece cuando hay
+          algo esperando, porque es un estado de paso, no una sección fija. ── */}
+      {claims.length > 0 && (
+        <section id="sect-claim" className={`card card--inlay sect rise ${isOpen('claim') ? '' : 'is-collapsed'}`} style={{ animationDelay: '100ms' }}>
+          <div className="sect-h sect-h--fold" onClick={onHead('claim')}>
+            {fold('claim')}
+            <span className="sect-effort">sin jugar</span>
+            <div>
+              <div className="sect-t">Reclama en la fundición</div>
+              <div className="sect-s">
+                ya terminó de construirse y sigue en el horno — maestría que pagaste y no has recogido
+              </div>
+            </div>
+            <div className="sect-r">
+              {claimXp > 0 && <span className="badge badge--mastered">+{fmt(claimXp)} XP</span>}
+            </div>
+          </div>
+
+          <div className="rows">
+            {claims.map((c) => {
+              const g = MASTERY_GEAR.find((x) => x.name === c.name);
+              const since = `listo desde hace ${untilWords(now - c.at)}`;
+              const sub = c.isPart
+                ? `pieza suelta · ${since} — reclámala para poder construir lo que la pide`
+                : `${g ? CATEGORY_LABEL[g.category] ?? g.category : 'en la fundición'} · ${since}`;
+              // Sin ficha a la que abrir (una pieza no tiene cajón propio) la
+              // fila no finge ser un botón.
+              const body = (
+                <>
+                  {g ? (
+                    <PrimeArt image={g.image} category={g.category} size={17} imgClass="bico-art" glyphClass="bico" />
+                  ) : (
+                    <Icon name="hammer" size={15} width={1.7} className="bico" />
+                  )}
+                  <span className="bname">
+                    <b>{c.name}</b>
+                    <span>{sub}</span>
+                  </span>
+                  <span className="bxp n">{c.xp ? `+${fmt(c.xp)} XP` : '—'}</span>
+                </>
+              );
+              return g ? (
+                <button key={c.name} className="brow" onClick={() => onOpenItem(c.name)}>
+                  {body}
+                </button>
+              ) : (
+                <div key={c.name} className="brow">
+                  {body}
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
 

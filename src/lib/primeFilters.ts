@@ -1,6 +1,7 @@
 import type { Prime, Progress } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, PRIMES, partsNeeded, relicSources } from './gameData';
-import { acquisition, craftLabel, craftState, ownedParts, primeStatus, relicOwned } from './selectors';
+import { acquisition, componentsInOven, craftLabel, craftState, ownedParts, primeOven, primeStatus, relicOwned, stillMissing } from './selectors';
+import { untilWords } from './dates';
 import type { Acquisition, PrimeStatus } from './selectors';
 
 /**
@@ -268,13 +269,21 @@ export function sortRows(rows: Row[], { key, dir }: Sort): Row[] {
 const fmtN = (n: number) => n.toLocaleString('es-CO');
 
 export function nextStep(r: Row, progress: Progress): string {
-  const { p, st, acq, owned, total, xp } = r;
+  const { p, st, acq, total, xp } = r;
   const xpTxt = xp > 0 ? ` · ${fmtN(xp)} XP` : '';
   if (st === 'mastered') return xp > 0 ? `${fmtN(xp)} XP ya contados` : 'Masterizado';
   if (st === 'built') return `Súbelo a rango tope${xpTxt}`;
   if (st === 'crafting') {
-    const c = craftState(progress, p.name);
-    return c ? craftLabel(c) : 'En la fundición';
+    const self = craftState(progress, p.name);
+    if (self) return craftLabel(self);
+    // Lo que cuece son sus piezas, no el prime entero: hay que nombrarlas o el
+    // pie contradice al conteo de arriba, que no bajó a 0.
+    const oven = primeOven(p, progress);
+    const n = componentsInOven(p, progress).length;
+    if (!oven) return 'En la fundición';
+    const piezas = `${n} pieza${n === 1 ? '' : 's'}`;
+    if (oven.done) return `Listo — reclama ${piezas} en la fundición`;
+    return oven.at > 0 ? `${piezas} en el horno · ${untilWords(oven.at - Date.now())}` : `${piezas} en el horno`;
   }
   if (st === 'ready') return `Constrúyelo${xpTxt}`;
 
@@ -284,8 +293,7 @@ export function nextStep(r: Row, progress: Progress): string {
   // honesto: no afirmar Varzia ni farmeo que el dato no respalda.
   if (total === 0) return 'Se consigue completo';
 
-  const isPending = (c: Prime['components'][number]) =>
-    c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count) > 0;
+  const isPending = (c: Prime['components'][number]) => stillMissing(c.count, c.fullName, progress) > 0;
 
   if (acq.farmableNow) {
     // la reliquia activa con mejor probabilidad radiante entre lo pendiente
@@ -319,7 +327,9 @@ export function nextStep(r: Row, progress: Progress): string {
     // tienes, que es el dato accionable (no cuántas piezas suelta)
     if (best) return `Abre ${best.relic} · tienes ${best.copies}`;
   }
-  const missing = total - owned;
+  // Sólo lo que falta de verdad: lo que está en el horno ya se pagó y no se
+  // vuelve a comprar.
+  const missing = p.components.reduce((n, c) => n + stillMissing(c.count, c.fullName, progress), 0);
   return `Varzia o mercado · ${missing} pieza${missing === 1 ? '' : 's'}`;
 }
 

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { Prime, PrimeComponent, Refinement, RelicRef } from '../types';
 import { CATEGORY_LABEL, MASTERY_GEAR, marketSetSlug, marketUrl, partsNeeded, relicSources } from '../lib/gameData';
 import { useStore } from '../lib/store';
-import { PERISHABLE, craftState, depLabel, gapLabel, ownedParts, pendingConsumers, primeStatus, relicOwned, resourceGaps, resourcesKnown, sourceLabel, STATUS_LABEL } from '../lib/selectors';
+import { PERISHABLE, componentsInOven, craftState, depLabel, gapLabel, ownedParts, pendingConsumers, primeOven, primeStatus, relicOwned, resourceGaps, resourcesKnown, sourceLabel, stillMissing, STATUS_LABEL } from '../lib/selectors';
 import { fmt } from '../lib/mastery';
 import { untilWords } from '../lib/dates';
 import { Icon } from '../components/Icon';
@@ -119,6 +119,10 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   // vistazo («sale en 6 h»), no necesita un intervalo corriendo por detrás.
   const [now] = useState(() => Date.now());
   const craft = craftState(progress, prime.name, now);
+  // El horno puede tener el prime entero o sólo algunas de sus piezas (las
+  // partes de warframe se craftean aparte): las dos cosas cuentan.
+  const oven = primeOven(prime, progress, now);
+  const ovenComps = componentsInOven(prime, progress);
   // recursos del crafteo: solo importan mientras no esté construido ni en el
   // horno — empezarlo ya los cobró.
   const resources =
@@ -135,7 +139,7 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
   const usable = useMemo(() => {
     const names = new Set<string>();
     for (const c of prime.components) {
-      if ((progress.parts[c.fullName] ?? 0) >= c.count) continue;
+      if (stillMissing(c.count, c.fullName, progress) <= 0) continue;
       for (const r of c.relics) {
         if (r.active && relicOwned(progress, r.relic) > 0) names.add(r.relic);
       }
@@ -154,6 +158,21 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
       <>
         Construido. Súbelo a rango máximo para reclamar{' '}
         <b className="n" style={{ color: 'var(--teal)' }}>{masteryXp ? fmt(masteryXp) : '—'} XP</b> de maestría.
+      </>
+    );
+  } else if (st === 'crafting' && !craft && oven) {
+    // Ninguna pieza falta por conseguir: las que no tienes están cociéndose.
+    verdictIcon = oven.done ? 'check' : 'clock';
+    verdict = oven.done ? (
+      <>
+        Sus piezas ya salieron del horno. Reclámalas en la fundición y constrúyelo:{' '}
+        <b className="n" style={{ color: 'var(--teal)' }}>{masteryXp ? fmt(masteryXp) : '—'} XP</b> de maestría.
+      </>
+    ) : (
+      <>
+        {ovenComps.length === 1 ? 'Una pieza suya se está construyendo' : `${ovenComps.length} piezas suyas se están construyendo`}
+        {oven.at > 0 ? <> — {ovenComps.length === 1 ? 'sale' : 'la última sale'} en <b>{untilWords(oven.at - now)}</b></> : ''}. No
+        te falta nada que farmear: sólo esperar.
       </>
     );
   } else if (craft) {
@@ -251,6 +270,19 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
               <span>{verdict}</span>
             </div>
 
+            {/* Piezas en el horno mientras otras siguen faltando: el veredicto
+                habla del farmeo que queda, así que esto va aparte para que no
+                las pida otra vez. */}
+            {ovenComps.length > 0 && !craft && st !== 'crafting' && (
+              <div className="goal-note">
+                <Icon name="clock" size={15} width={1.7} color={oven?.done ? 'var(--teal)' : undefined} />
+                <span>
+                  Ya en el horno: <b>{ovenComps.map((c) => c.name).join(', ')}</b> —{' '}
+                  {oven?.done ? 'reclámalo en la fundición' : 'no hay que volver a farmearlo'}.
+                </span>
+              </div>
+            )}
+
             {/* dependencias de crafteo: la razón para NO vender aunque esté masterizado */}
             {keep.length > 0 && (
               <div className="goal-note">
@@ -330,6 +362,10 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
           <div className="stack" style={{ gap: 12 }}>
             {prime.components.map((c) => {
               const have = Math.min(progress.parts[c.fullName] ?? 0, c.count);
+              // Una parte de warframe se craftea aparte: mientras cuece no está
+              // en el inventario, y el 0/1 sin explicación parece un farmeo
+              // pendiente cuando ya está pagado.
+              const partOven = craftState(progress, c.fullName, now);
               return (
                 <div key={c.fullName} className="comp">
                   <div className="comp-h">
@@ -337,6 +373,11 @@ export function PrimeDetail({ prime, onClose }: { prime: Prime; onClose: () => v
                       {c.name}
                       {c.count > 1 ? ` ×${c.count}` : ''}
                     </b>
+                    {partOven && (
+                      <span className={`badge badge--${partOven.done ? 'claim' : 'crafting'}`}>
+                        {partOven.done ? 'listo, sin reclamar' : 'en el horno'}
+                      </span>
+                    )}
                     {c.ducats ? <span className="duc n">{c.ducats} ducados</span> : null}
                     {c.market && (
                       <a href={marketUrl(c.market)} target="_blank" rel="noreferrer" className="k comp-mkt">

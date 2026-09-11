@@ -38,11 +38,62 @@ export function craftLabel(c: CraftState, now = Date.now()): string {
   return `En la fundición · listo en ${untilWords(c.at - now)}`;
 }
 
+/**
+ * Cuántas copias de una pieza están en el horno. `Progress.crafting` guarda un
+ * instante por nombre, no cantidades, así que la respuesta es 0 o 1: una pieza
+ * que pide dos copias y tiene las dos cociéndose se queda corta («aún te falta
+ * una») en vez de inventarse la segunda. Hoy no pasa —sólo las partes de
+ * warframe se craftean aparte, y todas piden una.
+ */
+const ovenCopies = (progress: Progress, key: string): number =>
+  progress.crafting[key] === undefined ? 0 : 1;
+
+/**
+ * Lo que de verdad falta de una pieza: ni la tienes, ni se está cociendo. Es
+ * la resta que usan TODAS las listas de farmeo, y la razón de que exista:
+ * una pieza en el horno ya está pagada, y pedirla otra vez es mandar a
+ * farmear lo que ya conseguiste.
+ */
+export function stillMissing(count: number, key: string, progress: Progress): number {
+  const owned = Math.min(progress.parts[key] ?? 0, count);
+  return Math.max(0, count - owned - ovenCopies(progress, key));
+}
+
+/** Piezas de este prime que están en el horno ahora mismo. */
+export const componentsInOven = (p: Prime, progress: Progress): PrimeComponent[] =>
+  p.components.filter((c) => progress.crafting[c.fullName] !== undefined);
+
+/**
+ * El horno de un ítem, sea el ítem entero o sus piezas. Un warframe con el
+ * Chassis cociéndose está en la fundición igual que uno cuyo blueprint final
+ * cuece: desde la app es el mismo «no hay nada que farmear, toca esperar».
+ * Sale cuando salga su última pieza y sólo está listo cuando lo están todas.
+ */
+function ovenOf(
+  self: CraftState | undefined,
+  keys: string[],
+  progress: Progress,
+  now: number,
+): CraftState | undefined {
+  if (self) return self;
+  const times = keys.map((k) => progress.crafting[k]).filter((t): t is number => t !== undefined);
+  if (times.length === 0) return undefined;
+  return { at: Math.max(...times), done: times.every((t) => t > 0 && t <= now) };
+}
+
+export const primeOven = (p: Prime, progress: Progress, now = Date.now()): CraftState | undefined =>
+  ovenOf(craftState(progress, p.name, now), p.components.map((c) => c.fullName), progress, now);
+
+export const gearOven = (g: MasteryItem, progress: Progress, now = Date.now()): CraftState | undefined =>
+  ovenOf(craftState(progress, g.name, now), (g.parts ?? []).map((part) => gearPartKey(g, part)), progress, now);
+
 /** Sigue habiendo algo que conseguir: ni masterizado, ni construido, ni en el
- *  horno. Lo comparten todas las listas de farmeo — un prime crafteándose no
- *  tiene piezas «faltantes», las tiene gastadas. */
-export const pendingPrime = (p: Prime, progress: Progress): boolean =>
-  !progress.mastered[p.name] && !progress.built[p.name] && progress.crafting[p.name] === undefined;
+ *  horno —él o todo lo que le falta—. Lo comparten todas las listas de farmeo:
+ *  un prime crafteándose no tiene piezas «faltantes», las tiene gastadas. */
+export function pendingPrime(p: Prime, progress: Progress): boolean {
+  const st = primeStatus(p, progress);
+  return st !== 'mastered' && st !== 'built' && st !== 'crafting';
+}
 
 export function ownedParts(p: Prime, progress: Progress): number {
   return p.components.reduce(
@@ -59,6 +110,11 @@ export function primeStatus(p: Prime, progress: Progress): PrimeStatus {
   if (progress.crafting[p.name] !== undefined) return 'crafting';
   const owned = ownedParts(p, progress);
   if (owned >= partsNeeded(p) && p.components.length > 0) return 'ready';
+  // Y lo mismo cuando lo que cuece son sus PIEZAS: no queda nada que farmear,
+  // sólo esperar. Sin esto la app pedía un Chassis que ya estaba en el horno.
+  if (p.components.length > 0 && p.components.every((c) => stillMissing(c.count, c.fullName, progress) === 0)) {
+    return 'crafting';
+  }
   if (owned > 0) return 'partial';
   return 'missing';
 }
@@ -102,7 +158,7 @@ export function acquisition(p: Prime, progress: Progress): Acquisition {
   let pending = false;
 
   for (const c of p.components) {
-    if (c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count) <= 0) continue;
+    if (stillMissing(c.count, c.fullName, progress) <= 0) continue;
     pending = true;
     for (const r of c.relics) {
       if (r.active) farmableNow = true;
@@ -130,7 +186,7 @@ export function farmTargets(progress: Progress): FarmTarget[] {
   for (const p of PRIMES) {
     if (p.founders || !pendingPrime(p, progress)) continue;
     for (const c of p.components) {
-      const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
+      const missing = stillMissing(c.count, c.fullName, progress);
       if (missing <= 0) continue;
       // preferir una reliquia activa; si no hay, una que ya tengas en inventario
       const relic = c.relics.find((r) => r.active) ?? c.relics.find((r) => relicOwned(progress, r.relic) > 0);
@@ -191,7 +247,7 @@ function missingParts(progress: Progress): MissingPart[] {
   for (const p of PRIMES) {
     if (p.founders || !pendingPrime(p, progress)) continue;
     for (const c of p.components) {
-      const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
+      const missing = stillMissing(c.count, c.fullName, progress);
       if (missing > 0) out.push({ prime: p, component: c, missing });
     }
   }
@@ -593,7 +649,7 @@ export function huntList(progress: Progress): Hunt[] {
     // en el horno tienen las piezas GASTADAS, y listarlas como pendientes
     // pintaba un farmeo completo debajo de «ya lo tienes».
     for (const c of pendingPrime(p, progress) ? p.components : []) {
-      const missing = c.count - Math.min(progress.parts[c.fullName] ?? 0, c.count);
+      const missing = stillMissing(c.count, c.fullName, progress);
       if (missing <= 0) continue;
       const ref = bestRef(c, progress);
       const owned = ref ? relicOwned(progress, ref.relic) : 0;
@@ -667,9 +723,13 @@ export interface GearHunt {
 export function gearSteps(item: MasteryItem, progress: Progress): GearStep[] {
   const out: GearStep[] = [];
   for (const part of item.parts ?? []) {
-    const owned = Math.min(progress.parts[gearPartKey(item, part)] ?? 0, part.count);
-    if (owned >= part.count) continue;
-    out.push({ part, owned, missing: part.count - owned, drop: part.drops?.[0] });
+    const key = gearPartKey(item, part);
+    const owned = Math.min(progress.parts[key] ?? 0, part.count);
+    // La que está en el horno no es un paso: ya la conseguiste, sólo falta
+    // que salga. Por eso la resta no es `part.count - owned`.
+    const missing = stillMissing(part.count, key, progress);
+    if (missing <= 0) continue;
+    out.push({ part, owned, missing, drop: part.drops?.[0] });
   }
   return out;
 }
@@ -684,7 +744,7 @@ export function gearHunts(progress: Progress): GearHunt[] {
       ? 'mastered'
       : progress.built[g.name]
         ? 'levelling'
-        : progress.crafting[g.name] !== undefined
+        : gearOven(g, progress)
           ? 'crafting'
           : 'missing';
     out.push({
@@ -705,6 +765,40 @@ export function gearHunts(progress: Progress): GearHunt[] {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   La fundición terminada — el escalón más barato de todos.
+   ═══════════════════════════════════════════════════════════════ */
+
+export interface ClaimReady {
+  /** nombre visible: un ítem («Fragor Prime») o una pieza («Nezha Prime Chassis») */
+  name: string;
+  /** instante en que terminó */
+  at: number;
+  /** maestría que suelta al reclamarlo; 0 si es una pieza */
+  xp: number;
+  /** una pieza no da XP por sí sola: sólo destraba el crafteo del ítem */
+  isPart: boolean;
+}
+
+/**
+ * Lo que está cocinado y sin reclamar. Existe porque sacarlo de «pendiente»
+ * —correcto: ya no hay nada que farmear— lo dejaba caer en silencio: la
+ * maestría ya pagada no aparecía en ninguna lista y el panel seguía mandando
+ * a farmear. Es lo más barato que puede recomendar la app: un clic, cero
+ * partidas.
+ */
+export function claimReady(progress: Progress, now = Date.now()): ClaimReady[] {
+  const out: ClaimReady[] = [];
+  for (const [name, at] of Object.entries(progress.crafting)) {
+    // 0 = marcado a mano, sin fecha: no se sabe si terminó, así que no se afirma.
+    if (!(at > 0 && at <= now)) continue;
+    const gear = MASTERY_GEAR.find((g) => g.name === name);
+    out.push({ name, at, xp: gear?.xp ?? 0, isPart: !gear && !PRIME_NAMES.has(name) });
+  }
+  // Lo que más maestría suelta arriba; las piezas al final, que no dan XP.
+  return out.sort((a, b) => Number(a.isPart) - Number(b.isPart) || b.xp - a.xp || a.name.localeCompare(b.name));
+}
+
+/* ═══════════════════════════════════════════════════════════════
    Tu próxima sesión — la escalera resuelta en una frase.
 
    El panel ya calcula los cuatro rankings (abrir, farmear, construir,
@@ -720,12 +814,15 @@ export function gearHunts(progress: Progress): GearHunt[] {
    nunca llegaba a ser la recomendación.
    ═══════════════════════════════════════════════════════════════ */
 
-export type SessionKind = 'open' | 'farm' | 'build' | 'level';
+export type SessionKind = 'claim' | 'open' | 'farm' | 'build' | 'level';
 /** qué persigues hoy: la colección prime o el rango de maestría */
 export type SessionFocus = 'primes' | 'mastery';
+/** `claim` va primero con los dos focos y no es una excepción a la escalera:
+ *  es su primer peldaño. Cuesta cero partidas y la maestría ya está pagada —
+ *  nada por debajo de eso puede ser mejor recomendación. */
 const LADDER: Record<SessionFocus, SessionKind[]> = {
-  primes: ['open', 'farm', 'build', 'level'],
-  mastery: ['level', 'build', 'open', 'farm'],
+  primes: ['claim', 'open', 'farm', 'build', 'level'],
+  mastery: ['claim', 'level', 'build', 'open', 'farm'],
 };
 
 export interface SessionRec {
@@ -759,6 +856,29 @@ function listNames(names: string[], max = 3): string {
 export function nextSession(progress: Progress, focus: SessionFocus = 'primes'): Session | null {
   const targets = new Set(Object.keys(progress.targets).filter((k) => progress.targets[k]));
   const recs: SessionRec[] = [];
+
+  const claims = claimReady(progress);
+  if (claims.length > 0) {
+    const items = claims.filter((c) => !c.isPart);
+    const pieces = claims.length - items.length;
+    const xp = items.reduce((n, c) => n + c.xp, 0);
+    const piecesTxt = `${pieces} pieza${pieces === 1 ? '' : 's'}`;
+    recs.push({
+      kind: 'claim',
+      title:
+        items.length > 0
+          ? `Reclama ${listNames(items.map((c) => c.name))} en la fundición`
+          : `Reclama ${piecesTxt} en la fundición`,
+      why:
+        items.length > 0
+          ? `ya ${items.length === 1 ? 'terminó' : 'terminaron'} de construirse${pieces > 0 ? ` (y ${piecesTxt} suelta${pieces === 1 ? '' : 's'})` : ''} — es maestría que ya pagaste, esperando un clic`
+          : `${piecesTxt} ya ${pieces === 1 ? 'terminada' : 'terminadas'} en el horno: reclámalas para poder construir lo que las pide`,
+      effort: 'sin jugar',
+      value: xp > 0 ? `+${fmt(xp)} XP` : piecesTxt,
+      primeName: items[0]?.name,
+      forTarget: claims.some((c) => targets.has(c.name)),
+    });
+  }
 
   const openable = openableRelics(progress);
   if (openable.length > 0) {
