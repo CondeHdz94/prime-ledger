@@ -19,7 +19,8 @@ const CAT_ORDER = [
   'Archwing',
   'Necramech',
   'Railjack',
-  'Misc',
+  'K-Drive',
+  'Modular',
 ];
 
 interface CatBucket {

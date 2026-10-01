@@ -63,7 +63,7 @@ export const CONSIGO: Opt<AcqKey>[] = [
  *  existe en el catálogo, y era un chip muerto que siempre daba cero. */
 const CAT_ORDER = [
   'Warframes', 'Primary', 'Secondary', 'Melee', 'Sentinels',
-  'Pets', 'Arch-Gun', 'Arch-Melee', 'Archwing', 'Necramech', 'Misc',
+  'Pets', 'Arch-Gun', 'Arch-Melee', 'Archwing', 'Necramech', 'K-Drive', 'Modular',
 ];
 export const CATS: Opt<string>[] = (() => {
   const present = new Set(CATALOG.map((p) => p.category));

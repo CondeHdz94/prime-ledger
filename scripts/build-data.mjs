@@ -171,21 +171,71 @@ for (const item of gear) {
 primes.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') || a.name.localeCompare(b.name));
 
 // ---------------------------------------------------------------- mastery catalog
-const FRAME_LIKE = new Set(['Warframes', 'Archwing', 'Pets', 'Sentinels', 'Misc']);
+// Correcciones a cómo @wfcd/items clasifica lo masterizable, contrastadas con
+// la wiki oficial (wiki.warframe.com, oct. 2026). El catálogo mezclaba tres
+// cosas en `Misc` y dejaba fuera otras tantas: la sección «Modular» enseñaba
+// 9 piezas de 26 y faltaban ~30.000 XP.
+//
+// - Modular = las tres clases de Category:Modular_Weapons: Zaws, Kitguns y
+//   Amps. Comparten mecánica — solo dan maestría tras dorarlas — y por eso
+//   van juntas aunque el juego sume las Zaws dentro de Melee.
+// - Amps: los 8 prismas vienen con masterable:false y Sirocco (que es un amp,
+//   no una pistola del Drifter) en Primary. La wiki cuenta 9 amps.
+// - Kitguns de Deimos (Sporelacer, Vermisplicer): masterable:false y tipo
+//   «Pistol». La wiki cuenta 6 recámaras. El uniqueName es el de la variante
+//   secundaria, pero primaria y secundaria comparten progreso: una fila basta.
+// - K-Drives: no son armas modulares; sección propia.
+// - Necramechs: llegan como Warframes con tope 30, pero suben 2 rangos por
+//   Forma hasta 40 (8.000 XP).
+const AMP_PRISM = /\/OperatorAmplifiers\/.*Barrel/;
+const KITGUN_CHAMBER = /\/(SUModularSecondarySet1\/Barrel|InfKitGun\/Barrels)\//;
+const isAmp = (item) => (item.type === 'Amp' && AMP_PRISM.test(item.uniqueName)) || item.name === 'Sirocco';
+const isKitgun = (item) => KITGUN_CHAMBER.test(item.uniqueName ?? '');
+// Orion es el «hijo secundario» del par: no da maestría (wiki, Sirius & Orion),
+// y contarlo pedía 6.000 XP imposibles de ganar.
+const NOT_MASTERABLE = new Set(['/Lotus/Powersuits/SiriusOrion/OrionSuit']);
+const isMasterable = (item) =>
+  !NOT_MASTERABLE.has(item.uniqueName) && (item.masterable || isAmp(item) || isKitgun(item));
+
+const appCategory = (item) => {
+  if (isAmp(item) || isKitgun(item) || item.type === 'Zaw Component') return 'Modular';
+  if (item.type === 'K-Drive Component') return 'K-Drive';
+  if (item.uniqueName?.startsWith('/Lotus/Powersuits/EntratiMech/')) return 'Necramech';
+  return item.category;
+};
+
+// El subtipo sale en el cajón («Melee · Rifle») y upstream lo trae mal en
+// variantes sueltas: Perigale Prime es «Rifle» siendo la Perigale «Sniper»,
+// Afuris Prime «Pistol» siendo las Afuris «Dual Pistols». Una variante hereda
+// el subtipo de su arma base; las de dos manos sin base se reconocen por el
+// nombre (Ak-, Twin, Dual), que es la convención del juego.
+const VARIANT = /^(Prisma|Telos|Secura|Sancti|Rakta|Synoid|Vaykor|Mara|Dex|Kuva|Tenet|Coda|Mutalist|Mk1-) ?| (Prime|Vandal|Wraith)$/g;
+const baseType = new Map(gear.filter((i) => i.masterable).map((i) => [`${i.category}|${i.name}`, i.type]));
+const appType = (item, category) => {
+  if (category === 'Modular') return isAmp(item) ? 'Amp' : isKitgun(item) ? 'Kitgun' : 'Zaw';
+  if (category === 'K-Drive' || category === 'Necramech') return undefined;
+  // diez melee (Mk1-Bo, Venato, Prova…) traen «Rifle»
+  if (category === 'Melee') return 'Melee';
+  const base = item.name.replace(VARIANT, '');
+  const type = (base !== item.name && baseType.get(`${item.category}|${base}`)) || item.type;
+  // después de heredar: la base también puede venir mal (Dual Cestra → «Pistol»)
+  if (category === 'Secondary' && type === 'Pistol' && /^(Ak|Twin |Dual )/.test(base)) return 'Dual Pistols';
+  return type;
+};
+
+const FRAME_LIKE = new Set(['Warframes', 'Archwing', 'Pets', 'Sentinels', 'Necramech', 'K-Drive']);
 const masteryGear = [];
-const miscCats = {};
 for (const item of gear) {
-  if (!item.masterable) continue;
-  if (item.category === 'Misc') miscCats[item.type ?? 'unknown'] = (miscCats[item.type ?? 'unknown'] || 0) + 1;
-  const cap = item.maxLevelCap ?? 30;
-  // Kitgun chambers rank like weapons despite living in Misc
-  const frameLike = FRAME_LIKE.has(item.category) && item.type !== 'Kitgun Component';
+  if (!isMasterable(item)) continue;
+  const category = appCategory(item);
+  const cap = category === 'Necramech' ? 40 : item.maxLevelCap ?? 30;
+  const frameLike = FRAME_LIKE.has(category);
   const perLevel = frameLike ? 200 : 100;
   masteryGear.push({
     name: item.name,
     un: item.uniqueName,
-    category: item.category,
-    type: item.type,
+    category,
+    type: appType(item, category),
     isPrime: item.isPrime || undefined,
     // el mismo CDN que los primes; si el archivo no existe (Carrier) la vista cae al glifo
     image: item.imageName,
@@ -197,7 +247,10 @@ for (const item of gear) {
   });
 }
 masteryGear.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-console.log('masterable Misc types:', JSON.stringify(miscCats));
+const perCat = {};
+for (const g of masteryGear) perCat[g.category] = (perCat[g.category] ?? 0) + 1;
+// Contrastar tras cada parche con la tabla de totales de la wiki (Mastery Rank)
+console.log('masterizables por sección:', JSON.stringify(perCat));
 
 // ---------------------------------------------------------------- build deps
 // Armas que se consumen al craftear otras (Bolto ×2 → Akbolto, Broken War →
@@ -207,7 +260,7 @@ console.log('masterable Misc types:', JSON.stringify(miscCats));
 const gearByUn = new Map(masteryGear.map((g) => [g.un, g]));
 const gearByName = new Map(masteryGear.map((g) => [g.name, g]));
 for (const item of gear) {
-  if (!item.masterable) continue;
+  if (!isMasterable(item)) continue;
   const consumer = gearByName.get(item.name);
   if (!consumer) continue;
   const counts = new Map();
@@ -262,7 +315,7 @@ const resourceIndex = {};
 let withParts = 0;
 let withResources = 0;
 for (const item of gear) {
-  if (!item.masterable) continue;
+  if (!isMasterable(item)) continue;
   const g = gearByName.get(item.name);
   if (!g) continue;
   const parts = [];

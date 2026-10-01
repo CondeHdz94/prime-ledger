@@ -75,7 +75,8 @@ export const CATEGORY_LABEL: Record<string, string> = {
   'Arch-Gun': 'Arch-Gun',
   'Arch-Melee': 'Arch-Melee',
   Archwing: 'Archwing',
-  Misc: 'Modular',
+  'K-Drive': 'K-Drive',
+  Modular: 'Modular',
   Necramech: 'Necramech',
   Railjack: 'Railjack',
 };

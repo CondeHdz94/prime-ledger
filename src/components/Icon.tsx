@@ -43,8 +43,14 @@ const CAT: Record<string, string> = {
   'Arch-Melee': 'M13.5 3 21 10.5 9.5 22H4v-5.5z M12 5.5l6.5 6.5',
   Necramech: 'M6 4h12v7l-3 3v6H9v-6l-3-3Z M9.5 7.5h5',
   Railjack: 'M12 3 20 12l-8 9-8-9Z M12 8v8',
-  Misc: 'M12 3 20 12l-8 9-8-9Z',
+  /* tabla de perfil con las puntas levantadas sobre dos patines */
+  'K-Drive': 'M2.5 10c1 2 2.4 3 4.5 3h10c2.1 0 3.5-1 4.5-3 M7.5 13v3 M16.5 13v3 M5.5 16h4 M14.5 16h4',
+  /* tres de cuatro bloques: piezas intercambiables, una por encajar */
+  Modular: 'M4 4h7v7H4Z M13 4h7v7h-7Z M4 13h7v7H4Z',
 };
+
+/** categoría que un parche trajo y aún no tiene glifo */
+const GENERIC = 'M12 3 20 12l-8 9-8-9Z';
 
 export type IconName = keyof typeof PATHS;
 
@@ -93,7 +99,7 @@ export function CatIcon({ cat, size = 22 }: { cat: string; size?: number }) {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={CAT[cat] ?? CAT.Misc} />
+      <path d={CAT[cat] ?? GENERIC} />
     </svg>
   );
 }
