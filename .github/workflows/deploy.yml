@@ -32,7 +32,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Catálogo al día (efímero, no se commitea) + tablas de drop en vivo
       - run: pnpm add -D @wfcd/items@latest
-      - run: pnpm build:data
+      # Si el catálogo de aguas arriba viene roto, build:data aborta sin
+      # escribir y se despliega con el JSON commiteado: mejor datos de hace
+      # unas semanas que una web donde ningún prime tiene piezas.
+      - run: pnpm build:data || echo "::warning::build:data falló; se despliega con el game-data.json commiteado"
       - run: pnpm build
         env:
           GITHUB_PAGES: 'true'

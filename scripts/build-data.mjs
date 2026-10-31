@@ -170,6 +170,20 @@ for (const item of gear) {
 }
 primes.sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') || a.name.localeCompare(b.name));
 
+// Freno antes de escribir: @wfcd/items 1.1276.x publicó las 3208 reliquias con
+// `rewards: []`, ninguna pieza encontró su reliquia y el deploy semanal subió
+// 170 primes sin componentes — toda la web decía «Se consigue completo». Lo
+// normal es que solo ~11 vengan vacíos (Founders, eventos, armas de
+// centinela); si falta la mitad, el dato de origen está roto y es mejor no
+// escribir nada: el JSON commiteado sigue sirviendo.
+const primesWithParts = primes.filter((p) => p.components.length > 0).length;
+if (rewardIndex.size === 0 || primesWithParts < primes.length / 2) {
+  throw new Error(
+    `Catálogo sospechoso: ${primesWithParts}/${primes.length} primes con piezas, ` +
+      `${rewardIndex.size} recompensas de reliquia. ¿@wfcd/items roto aguas arriba? No se escribe nada.`,
+  );
+}
+
 // ---------------------------------------------------------------- mastery catalog
 // Correcciones a cómo @wfcd/items clasifica lo masterizable, contrastadas con
 // la wiki oficial (wiki.warframe.com, oct. 2026). El catálogo mezclaba tres
