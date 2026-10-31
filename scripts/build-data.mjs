@@ -50,6 +50,32 @@ for (const r of relicItems) {
   }
 }
 
+// La misma tabla vista desde la pieza: cada componente prime trae en `drops`
+// la reliquia y refinamiento que la sueltan ("Axi I3 Relic (Radiant)", sin
+// paréntesis = Intact). @wfcd/items 1.1276.x publicó las reliquias con
+// `rewards: []` pero los drops de las piezas intactos, así que rellenamos de
+// aquí lo que la reliquia no trae. Con upstream sano coinciden y no añade nada.
+const allItems = [...new Items({})];
+for (const item of allItems) {
+  if (!item.isPrime) continue;
+  for (const comp of item.components ?? []) {
+    for (const d of comp.drops ?? []) {
+      const m = /^(Lith|Meso|Neo|Axi|Requiem) (\S+) Relic(?: \((Exceptional|Flawless|Radiant)\))?$/.exec(d.location ?? '');
+      if (!m || !d.type) continue;
+      const key = `${m[1]} ${m[2]}`;
+      const refinement = m[3] ?? 'Intact';
+      let entry = relicMap.get(key);
+      if (!entry) relicMap.set(key, (entry = { tier: m[1], rewards: new Map() }));
+      let rec = entry.rewards.get(d.type);
+      if (!rec) entry.rewards.set(d.type, (rec = { rarity: d.rarity, chances: {} }));
+      if (rec.chances[refinement] !== undefined) continue;
+      rec.chances[refinement] = d.chance;
+      const derived = rarityOf(refinement, d.chance);
+      if (derived) rec.rarity = derived;
+    }
+  }
+}
+
 // Reverse index: reward item name -> [{ relic, rarity, chances }]
 const rewardIndex = new Map();
 for (const [relic, entry] of relicMap) {
@@ -124,7 +150,7 @@ for (const [key, sources] of relicSources) {
 // El filtro `{ category }` de @wfcd/items no devuelve los 'Companion Weapon'
 // (24 armas de centinela masterizables) pese a que su category ES 'Primary'.
 // Filtrando en JS sobre el set completo aparecen: 803 masterizables, no 779.
-const gear = [...new Items({})].filter((i) => GEAR_CATEGORIES.includes(i.category));
+const gear = allItems.filter((i) => GEAR_CATEGORIES.includes(i.category));
 const primes = [];
 for (const item of gear) {
   if (!item.isPrime || !item.masterable) continue;
